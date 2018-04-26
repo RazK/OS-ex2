@@ -19,6 +19,7 @@ void timer_handler(int sig)
 
 
 int main(void) {
+    printf("In demo_timer.c\r\n");
 	struct sigaction sa;
 	struct itimerval timer;
 
