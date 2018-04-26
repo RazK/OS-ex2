@@ -4,44 +4,91 @@
 #include "uthreads.h"
 #include <stdio.h>
 
-#define ERR (-1)
-#define SUCCESS 0
+#define RET_ERR             (-1)
+#define RET_SUCCESS         0
 
+#define STATE_RUNNING       1
+#define STATE_READY         0
+#define STATE_BLOCKED       2
+
+#define STATUS_ALIVE        true
+#define STATUS_TERMINATED   false
+
+
+
+/* Data per thread. */
+typedef struct Thread {
+    // Global thread id
+    int id;
+
+    // Schedualing State: one of [Ready, Running, Blocked]
+    int state;
+
+    int * SP; /* #todo What type should this pointer have? */
+    // Should we save using a pointer to the stack and a positional argument?
+
+    // Thread Status: alive or terminated.
+    bool status;
+
+
+
+} Thread;
+
+/* Global counter for all quantums. */
 static int total_quantums;
 
+/* Data Structure holding all threads. */
+Thread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
 
 int uthread_init(int quantum_usecs){
     if (quantum_usecs < 0){
-        return ERR;
+        return RET_ERR;
     }
     total_quantums = 1;
 
-    return SUCCESS;
+    // quantum timer + scheduler
+
+    // init the list of threads
+    // Did not start from 0 here, reserved first thread for main
+    for (int i = 1; i<MAX_THREAD_NUM; i++){
+        thread_list[i] = {i /* id */, STATE_READY /*state*/, nullptr /* SP */, STATUS_TERMINATED
+                /* Status*/ };
+    }
+
+
+
+    return RET_SUCCESS;
 
 }
 
-int uthread_spawn(void (*f)(void)){
+int uthread_spawn(void (*f)()){
     printf("pass\r\n");
+    return RET_SUCCESS;
 }
 
 int uthread_terminate(int tid){
     printf("pass\r\n");
+    return RET_SUCCESS;
 }
 
 int uthread_block(int tid){
     printf("pass\r\n");
+    return RET_SUCCESS;
 }
 
 int uthread_resume(int tid){
     printf("pass\r\n");
+    return RET_SUCCESS;
 }
 
 int uthread_sync(int tid){
     printf("pass\r\n");
+    return RET_SUCCESS;
 }
 
 int uthread_get_tid(){
     printf("pass\r\n");
+    return RET_SUCCESS;
 
 }
 
@@ -52,5 +99,6 @@ int uthread_get_total_quantums(){
 
 int uthread_get_quantums(int tid){
     printf("pass\r\n");
+    return RET_SUCCESS;
 
 }
