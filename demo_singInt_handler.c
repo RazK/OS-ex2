@@ -18,6 +18,8 @@ void catch_int(int sigNum) {
 
 int main(void)
 {
+	printf("In demo_sigInt_handler.c\r\n");
+
 	// Install catch_int as the signal handler for SIGINT.
 	struct sigaction sa;
 	sa.sa_handler = &catch_int;
