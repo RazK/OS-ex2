@@ -3,6 +3,7 @@
 //
 #include "uthreads.h"
 #include <stdio.h>
+#include <cstdlib>
 
 #define RET_ERR             (-1)
 #define RET_SUCCESS         0
@@ -24,7 +25,7 @@ typedef struct Thread {
     // Schedualing State: one of [Ready, Running, Blocked]
     int state;
 
-    int * SP; /* #todo What type should this pointer have? */
+    void * SP; /* #todo What type should this pointer have? */
     // Should we save using a pointer to the stack and a positional argument?
 
     // Thread Status: alive or terminated.
@@ -50,7 +51,7 @@ int uthread_init(int quantum_usecs){
 
     // init the list of threads
     // Did not start from 0 here, reserved first thread for main
-    for (int i = 1; i<MAX_THREAD_NUM; i++){
+    for (int i = 1; i < MAX_THREAD_NUM; i++){
         thread_list[i] = {i /* id */, STATE_READY /*state*/, nullptr /* SP */, STATUS_TERMINATED
                 /* Status*/ };
     }
@@ -62,8 +63,31 @@ int uthread_init(int quantum_usecs){
 }
 
 int uthread_spawn(void (*f)()){
-    printf("pass\r\n");
-    return RET_SUCCESS;
+    int id;
+
+    // Find the minimal ID not yet taken.
+    for (id = 1; id < MAX_THREAD_NUM; id++){
+        if (thread_list[id].status == STATUS_TERMINATED){ // Can be shortened to if(..status)
+            thread_list[id].status = STATUS_ALIVE;
+            break;
+        }
+    }
+
+    if (id == MAX_THREAD_NUM){
+        return RET_ERR; // No more room for threads
+    }
+
+    thread_list[id].SP = malloc(STACK_SIZE);
+
+    if (thread_list[id].SP == NULL){
+        return RET_ERR; // Unsuccessful malloc
+    }
+
+    // State is also init to
+
+    //todo: Add the thread to the end of the ready list.
+
+    return id;
 }
 
 int uthread_terminate(int tid){
