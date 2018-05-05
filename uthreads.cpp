@@ -17,6 +17,9 @@
 
 const int ID_SCHEDUELER = 0;
 const int ID_FIRST_USER_THREAD = 1;
+const int SIG_RET_FROM_JUMP = 1;
+
+static UThreadID running_thread;
 
 
 /* Scheduler thread stack */
@@ -47,25 +50,53 @@ UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (fo
 sigjmp_buf env[MAX_THREAD_NUM];
 
 
+void switch_threads(void ){
+    // Find first ready thread which is neither BLOCKED nor TERMINATED
+    UThreadID nextUTID;
+
+    while (!ready_queue.empty()) {
+        nextUTID = ready_queue.front();
+        ready_queue.pop();
+        if (State::READY == thread_list[nextUTID].GetState()){
+            break;
+        }
+    }
+
+    // Validate ready_queue is not empty (FATAL ERROR)
+    if (ready_queue.empty()) {
+        std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
+        //return RET_ERR;
+    }
+
+    // Save env for current thread and then jump to next one
+    UThreadID currentUTID = (UThreadID)uthread_get_tid();
+    int ret_val = sigsetjmp(thread_list[currentUTID].GetEnv(), 1);
+    if (ret_val == SIG_RET_FROM_JUMP){
+        return;
+    }
+    siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
+    return;
+}
+
 //std::list <std::queue>
-int scheduler_f(void){
+void sig_alarm_handler(void){
     Mask m{};
-    int running_thread = uthread_get_tid();
+    int cur_tid = uthread_get_tid();
     // Add this thread to the end of the line.
-    ready_queue.push((UThreadID) running_thread);
-//    thread_list[running_thread].SetEnv();
-//    int ret_val = sigsetjmp(thread_list[running_thread].SetEnv,1);
+    ready_queue.push((UThreadID) cur_tid);
+//    thread_list[cur_tid].SetEnv();
+//    int ret_val = sigsetjmp(thread_list[cur_tid].SetEnv,1);
 
     if (ready_queue.empty()) {
         std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
-        return RET_ERR;
+//        return RET_ERR;
     }
     UThreadID currentThread = ready_queue.front();
     ready_queue.pop();
 
 //    siglongjmp(thread_list[currentThread].GetEnv());
 
-    return RET_SUCCESS;
+//    return RET_SUCCESS;
 }
 
 int uthread_init(int quantum_usecs){
@@ -77,7 +108,7 @@ int uthread_init(int quantum_usecs){
 
     // TODO: Init scheduler thread
     auto sp = (address_t)stack_scheduler + STACK_SIZE - sizeof(address_t);
-    auto pc = (address_t)scheduler_f;
+    auto pc = (address_t)sig_alarm_handler;
     thread_list[ID_SCHEDUELER] = UThread(sp, pc, State::RUNNING, Status::ALIVE);
     sigsetjmp(env[ID_SCHEDUELER], 1);
     (env[0]->__jmpbuf)[JB_SP] = translate_address(sp);
@@ -256,8 +287,7 @@ int uthread_sync(int tid){
 
 // TODO: Implement
 int uthread_get_tid(){
-    printf("pass\r\n");
-    return RET_SUCCESS;
+    return running_thread;
 }
 
 // TODO: Implement
