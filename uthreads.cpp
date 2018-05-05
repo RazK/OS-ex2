@@ -172,7 +172,7 @@ int uthread_block(int tid){
         return RET_ERR;
     }
 
-    if (ErrorCode::SUCCESS != thread_list[tid].SetBlocked(_BlockedReason::REQUEST)){
+    if (ErrorCode::SUCCESS != thread_list[tid].SetBlocked(BlockReason::REQUEST)){
         std::cerr << MSG_LIBRARY_ERR << "Failed to block: ID " << tid << std::endl;
         return RET_ERR;
     }
@@ -197,6 +197,10 @@ int uthread_resume(int tid){
 
     if (Status::TERMINATED == thread_list[tid].GetStatus()){ // no such thread exists
         return RET_ERR;
+    }
+
+    if (ErrorCode::SUCCESS == thread_list[tid].UnBlock(BlockReason::REQUEST)){
+
     }
 
     // set as ready, without overwriting running state_ if necessary
