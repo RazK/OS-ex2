@@ -6,6 +6,7 @@
 #define QUANTUM_USECS (3)
 #define RET_ERR (-1)
 
+#ifdef NO_DEBUG
 int main(){
 
     int return_val;
@@ -36,3 +37,4 @@ int main(){
 
 
 }
+#endif

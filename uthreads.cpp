@@ -21,23 +21,13 @@ const int ID_FIRST_USER_THREAD = 1;
 
 /* Scheduler thread stack */
 char stack_scheduler[STACK_SIZE];
-std::queue <UThreadID> ready_queue;
 
 /* Scheduler thread function */
 // TODO: Implement real scheduler function
-
-//void switchThreads(void)
-//{
-//    static int currentThread = 0;
-//
-//    int ret_val = sigsetjmp(env[currentThread],1);
-//    printf("SWITCH: ret_val=%d\n", ret_val);
-//    if (ret_val == 1) {
-//        return;
-//    }
-//    currentThread = 1 - currentThread;
-//    siglongjmp(env[currentThread],1);
-//}
+int scheduler_f(){
+    printf("Hi i'm the scheduler\r\n");
+    return RET_SUCCESS;
+}
 
 /* Global counter for all quantums. */
 static int total_quantums;
@@ -46,27 +36,8 @@ static int total_quantums;
 UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
 sigjmp_buf env[MAX_THREAD_NUM];
 
-
+std::queue <UThreadID> ready_queue;
 //std::list <std::queue>
-int scheduler_f(void){
-    Mask m{};
-    int running_thread = uthread_get_tid();
-    // Add this thread to the end of the line.
-    ready_queue.push((UThreadID) running_thread);
-//    thread_list[running_thread].SetEnv();
-//    int ret_val = sigsetjmp(thread_list[running_thread].SetEnv,1);
-
-    if (ready_queue.empty()) {
-        std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
-        return RET_ERR;
-    }
-    UThreadID currentThread = ready_queue.front();
-    ready_queue.pop();
-
-//    siglongjmp(thread_list[currentThread].GetEnv());
-
-    return RET_SUCCESS;
-}
 
 int uthread_init(int quantum_usecs){
     Mask m{}; // masking object
