@@ -144,10 +144,6 @@ int uthread_spawn(void (*f)()){
 
     ready_queue.push((UThreadID)id); // cast for type protection
 
-//    char* stack = (char*)(malloc(STACK_SIZE));
-//    if (stack == nullptr){
-//        std::cout << MSG_SYSTEM_ERR << "Malloc failed in spawn. Thread ID " << id << std::endl;
-//    }
     thread_list[id].InitEnv(&f);
     return id;
 }
@@ -177,7 +173,7 @@ int uthread_terminate(int tid){
         return RET_ERR;
     }
 
-    thread_list[tid].free();
+    thread_list[tid].FreeStack();
 
     // Not removing from ready queue. Rather, this is responsibility of scheduler to assert threads
     // are alive
