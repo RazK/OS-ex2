@@ -121,7 +121,7 @@ ErrorCode UThread::UnBlock(BlockReason reason){
 
 }; // Set the given block reason to false, if both are now false - Ready
 
-ErrorCode UThread::InitEnv(address_t stack, address_t func){
+ErrorCode UThread::InitEnv(char* stack, void* func){
     address_t sp, pc;
     sp = (address_t)stack + STACK_SIZE - sizeof(address_t);
     pc = (address_t)func;
