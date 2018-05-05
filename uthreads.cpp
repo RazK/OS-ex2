@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <queue>
 #include <list>
+#include <stdexcept>
+#include <exception>
 
 const int RET_ERR = (-1);
 const int RET_SUCCESS = 0;
@@ -109,8 +111,27 @@ typedef enum _MaskingCode {
 // A masking object. This short lived object is intended to call the appropriate masking function
 // in any given scenario, and call the reciprocal unmask function when the scope is exited.
 typedef struct _Mask{
+    sigset_t old_set{};
+    sigset_t cur_set{};
 
-    _Mask(MaskingCode code){
+    explicit _Mask(MaskingCode code){
+        int return_val;
+//        return_val = ;
+        if (RET_ERR == sigemptyset(&cur_set))
+        {
+            throw std::exception();
+        }
+        if (RET_ERR == sigaddset(&cur_set, SIGVTALRM))
+        {
+            throw std::exception();
+        }
+        if (RET_ERR == sigprocmask(SIG_BLOCK, &cur_set, &old_set));
+        {
+            throw std::exception();
+        }
+
+
+
         if (code == SCHEDULER){
             //todo save old mask, and then add appropriate mask settings per scenario (code)
             sigmask(1);
@@ -122,8 +143,10 @@ typedef struct _Mask{
     }
 
     ~_Mask(){
-        //todo reinstate old mask
-        sigmask(1);
+        if (RET_ERR == sigprocmask(SIG_SETMASK, &old_set, nullptr));
+        {
+            throw std::exception();
+        }
     }
 
 } Mask;
