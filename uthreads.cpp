@@ -26,26 +26,12 @@ static UThreadID running_thread;
 char stack_scheduler[STACK_SIZE];
 std::queue <UThreadID> ready_queue;
 
-
-//void switchThreads(void)
-//{
-//    static int currentThread = 0;
-//
-//    int ret_val = sigsetjmp(env[currentThread],1);
-//    printf("SWITCH: ret_val=%d\n", ret_val);
-//    if (ret_val == 1) {
-//        return;
-//    }
-//    currentThread = 1 - currentThread;
-//    siglongjmp(env[currentThread],1);
-//}
-
 /* Global counter for all quantums. */
 static int total_quantums;
 
 /* Threads descriptor lookup table. */
 UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
-sigjmp_buf env_list[MAX_THREAD_NUM];
+//sigjmp_buf env_list[MAX_THREAD_NUM];
 //sigjmp_buf env[MAX_THREAD_NUM];
 
 
@@ -70,14 +56,14 @@ void switch_threads(void ){
 
     // Save env for current thread and then jump to next one
     auto currentUTID = (UThreadID)uthread_get_tid();
-//    int ret_val = sigsetjmp(thread_list[currentUTID].GetEnv(), 1);
-    int ret_val = sigsetjmp(env_list[currentUTID], 1);
+    int ret_val = sigsetjmp(thread_list[currentUTID].GetEnv(), 1);
+//    int ret_val = sigsetjmp(thread_list[], 1);
     if (ret_val == SIG_RET_FROM_JUMP){
         return;
     }
     running_thread = nextUTID;
-//    siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
-    siglongjmp(env_list[nextUTID], SIG_RET_FROM_JUMP);
+    siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
+//    siglongjmp(env_list[nextUTID], SIG_RET_FROM_JUMP);
 }
 
 //std::list <std::queue>
@@ -146,12 +132,6 @@ int uthread_spawn(void (*f)()){
         return RET_ERR; // No more room for threads
     }
 
-    //thread_list[id].sp = (address_t )malloc(STACK_SIZE);
-
-    //if (thread_list[id].sp == NULL){
-    //    return RET_ERR; // Unsuccessful malloc
-    //}
-
     // Set thread as alive for use
     if (ErrorCode::SUCCESS != thread_list[id].SetStatus(Status::ALIVE)) {
         return RET_ERR;
@@ -164,10 +144,10 @@ int uthread_spawn(void (*f)()){
 
     ready_queue.push((UThreadID)id); // cast for type protection
 
-    char* stack = (char*)(malloc(STACK_SIZE));
-    if (stack == nullptr){
-        std::cout << MSG_SYSTEM_ERR << "Malloc failed in spawn. Thread ID " << id << std::endl;
-    }
+//    char* stack = (char*)(malloc(STACK_SIZE));
+//    if (stack == nullptr){
+//        std::cout << MSG_SYSTEM_ERR << "Malloc failed in spawn. Thread ID " << id << std::endl;
+//    }
     thread_list[id].InitEnv(&f);
     return id;
 }
@@ -191,16 +171,14 @@ int uthread_terminate(int tid){
         return RET_ERR;
     }
 
-//    if (thread_list[tid].G){
-//
-//    }
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
         std::cerr << MSG_LIBRARY_ERR << "Could not set the state: ID " << tid << std::endl;
         return RET_ERR;
     }
 
-    // todo: free memory of sp. Problem because sp is an int for some reason
+    thread_list[tid].free();
+
     // Not removing from ready queue. Rather, this is responsibility of scheduler to assert threads
     // are alive
 
