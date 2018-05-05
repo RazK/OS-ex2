@@ -66,7 +66,7 @@ public:
     ErrorCode PushSynced(UThreadID utid_synced_with_me);
     ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
-    ErrorCode InitEnv(void* func);
+    ErrorCode InitEnv(void (*func)(void));
     ErrorCode FreeStack();
 
     Status GetStatus() const;
@@ -76,13 +76,14 @@ public:
     const std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
     sigjmp_buf& GetEnv();
     //ErrorCode AddImSyncedWith(UThreadID utid_im_synced_with);
+    sigjmp_buf env_;
 
 private:
     //address_t sp;                                     // Stack Pointer: Address of thread's stack head
     //address_t pc;                                     // Program Counter: Address of thread's current instruction
     State state_;                                       // Scheduling State: one of [Ready, Running, Blocked]
     Status status_;                                     // Thread Status: alive or terminated.
-    sigjmp_buf env_;
+//    sigjmp_buf env_;
     char* stack;
     address_t sp_;
     address_t pc_;

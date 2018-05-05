@@ -4,7 +4,6 @@
 #include "mask.h"
 
 Mask::Mask(){
-    int return_val;
 
     if (RET_ERR == sigemptyset(&cur_set)) {
         std::cerr << MSG_SYSTEM_ERR << "Could not create empty set in Mask object constructor." << std::endl;
@@ -16,7 +15,7 @@ Mask::Mask(){
         exit(1);
     }
 
-    if (RET_ERR == sigprocmask(SIG_BLOCK, &cur_set, &old_set));{
+    if (RET_ERR == sigprocmask(SIG_BLOCK, &this->cur_set, &this->old_set)){
         std::cerr << MSG_SYSTEM_ERR << "Could not update set using sigprocmask in Mask object constructor." << std::endl;
         exit(1);
     }

@@ -20,7 +20,7 @@ void f(void)
             printf("f: switching\n");
             switch_threads();
         }
-        usleep(SECOND);
+        usleep(0.2*SECOND);
     }
 }
 
@@ -34,14 +34,15 @@ void g(void)
             printf("g: switching\n");
             switch_threads();
         }
-        usleep(SECOND);
+        usleep(0.2*SECOND);
     }
 }
 
 int jmp_test(){
     uthread_init(3000000);
-    uthread_spawn(&f);
-    uthread_spawn(&g);
+    uthread_spawn(g);
+    uthread_spawn(g);
+    f();
 }
 
 int main(){

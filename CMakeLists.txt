@@ -7,12 +7,13 @@ set(SOURCE_FILES
         demo_itimer.c
         demo_jmp.c
         demo_singInt_handler.c
+        err_codes.h
         main.cpp
         mask.cpp
         mask.h
         uthread.cpp
         uthread.h
         uthreads.cpp
-        uthreads.h err_codes.h)
+        uthreads.h)
 
-add_executable(OS_ex2 ${SOURCE_FILES} err_codes.h)
+add_executable(OS_ex2 ${SOURCE_FILES})

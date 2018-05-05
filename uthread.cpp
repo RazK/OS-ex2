@@ -112,7 +112,7 @@ ErrorCode UThread::UnBlock(BlockReason reason){
 
 }; // Set the given block reason to false, if both are now false - Ready
 
-ErrorCode UThread::InitEnv(void* func){
+ErrorCode UThread::InitEnv(void (*func)(void)){
     this->stack = (char*) malloc(STACK_SIZE);
     if (stack == nullptr){
         std::cerr << MSG_SYSTEM_ERR << "Could not allocate memory in environment init";
