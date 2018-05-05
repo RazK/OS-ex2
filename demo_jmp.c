@@ -118,12 +118,14 @@ void setup(void)
   (env[1]->__jmpbuf)[JB_PC] = translate_address(pc);
   sigemptyset(&env[1]->__saved_mask);         
 }
-
+#ifdef DEBUG_JMP
 int main(void)
 {
   setup();		
   siglongjmp(env[0], 1);
   return 0;
 }
+#endif
+
 #endif
 
