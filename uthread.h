@@ -86,7 +86,7 @@ public:
     State GetState() const;
     UThreadID FrontSynced() const;
     bool IsSyncedEmpty() const;
-    std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
+    const std::array <bool, NUM_OF_REASONS> const GetBlockedReasons() const;
     //ErrorCode AddImSyncedWith(UThreadID utid_im_synced_with);
 
 private:
