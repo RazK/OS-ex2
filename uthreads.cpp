@@ -6,12 +6,15 @@
 #include <cstdlib>
 #include <machine/setjmp.h>
 #include <setjmp.h>
+#include <queue>
+#include <list>
 
 const int RET_ERR = (-1);
 const int RET_SUCCESS = 0;
 
 const int ID_SCHEDUELER = 0;
 const int ID_FIRST_USER_THREAD = 1;
+
 
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
@@ -52,6 +55,8 @@ address_t translate_address(address_t addr)
 }
 #endif
 
+typedef const u_int8_t threadID;
+
 typedef enum _State {
     READY,
     RUNNING,
@@ -71,6 +76,7 @@ typedef struct _Thread {
     address_t pc;   // Program Counter: Address of thread's current instruction
     State state;    // Scheduling State: one of [Ready, Running, Blocked]
     Status status;  // Thread Status: alive or terminated.
+    std::queue <threadID> synced_threads{}; // All the threads that called "sync" for this thread.
 
     _Thread()
     {
@@ -89,6 +95,35 @@ typedef struct _Thread {
     }
 } Thread;
 
+typedef enum _MaskingCode {
+    SCHEDULER,
+    BLOCKING,
+    NUMBER_OF_CODES
+
+} MaskingCode;
+
+// A masking object. This short lived object is intended to call the appropriate masking function
+// in any given scenario, and call the reciprocal unmask function when the scope is exited.
+typedef struct _Mask{
+
+    void _Mask(MaskingCode code){
+        if (code == SCHEDULER){
+            //todo save old mask, and then add appropriate mask settings per scenario (code)
+            sigmask(1);
+        }
+        if (code == BLOCKING){
+            sigmask(1);
+        }
+//        return RET_SUCCESS;
+    }
+
+    ~_Mask(){
+        //todo reinstate old mask
+        sigmask(1);
+    }
+
+} Mask;
+
 /* Scheduler thread stack */
 char stack_scheduler[STACK_SIZE];
 
@@ -106,13 +141,16 @@ static int total_quantums;
 Thread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
 sigjmp_buf env[MAX_THREAD_NUM];
 
+std::queue <threadID> ready_queue;
+//std::list <std::queue>
+
 int uthread_init(int quantum_usecs){
+    Mask m{MaskingCode::SCHEDULER}; // masking object
     if (quantum_usecs < 0){
         return RET_ERR;
     }
     total_quantums = 1;
 
-    // quantum timer + scheduler
     // TODO: Init scheduler thread
     auto sp = (address_t)stack_scheduler + STACK_SIZE - sizeof(address_t);
     auto pc = (address_t)scheduler_f;
@@ -127,16 +165,19 @@ int uthread_init(int quantum_usecs){
         thread_list[thread_id] = Thread();
     }
 
+    // todo: Should we already enter infinite loop of running threads as they come?
+
     return RET_SUCCESS;
 }
 
 int uthread_spawn(void (*f)()){
+    Mask m{MaskingCode::SCHEDULER}; // masking object
     int id;
 
     // Find the minimal ID not yet taken.
     for (id = 1; id < MAX_THREAD_NUM; id++){
         if (thread_list[id].status == Status::TERMINATED){ // Can be shortened to if(..status)
-            thread_list[id].status = Status::ALIVE;
+
             break;
         }
     }
@@ -151,33 +192,97 @@ int uthread_spawn(void (*f)()){
         return RET_ERR; // Unsuccessful malloc
     }
 
-    // State is also init to
+    thread_list[id].status = Status::ALIVE; // Set thread as alive for use
 
-    //todo: Add the thread to the end of the ready list.
+    thread_list[id].state = State::READY;
+
+    ready_queue.push((threadID)id); // cast for type protection
+
+    //todo: run f?
 
     return id;
 }
 
-// TODO: Implement
+
 int uthread_terminate(int tid){
-    printf("pass\r\n");
+    Mask m{MaskingCode::SCHEDULER}; // masking object
+    if (tid < 0 || tid > MAX_THREAD_NUM){
+        return RET_ERR;
+    }
+
+    if (thread_list[tid].status == Status::TERMINATED){ // Already terminated or doesn't exist
+        return RET_ERR;
+    }
+
+    //todo: check state? what if it is running or blocked?
+
+    thread_list[tid].status = Status::TERMINATED;
+    thread_list[tid].state = State::READY;
+    // todo: free memory of sp. Problem because sp is an int for some reason
+    // Not removing from ready queue. Rather, this is responsibility of scheduler to assert threads
+    // are alive
+
+    // Iterate the queue of synced threads to allow them to run
+    while (!thread_list[tid].synced_threads.empty()){
+        threadID synced_thread = thread_list[tid].synced_threads.front();
+        thread_list[synced_thread].state = READY;
+        ready_queue.push(synced_thread);
+        // No need to check if synced thread is alive. This is responsibility of scheduler.
+        thread_list[tid].synced_threads.pop();
+    }
+
     return RET_SUCCESS;
 }
-// TODO: Implement
+
 int uthread_block(int tid){
-    printf("pass\r\n");
+    Mask m{MaskingCode::SCHEDULER}; // masking object
+    if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to block main thread or boundary error
+        return RET_ERR;
+    }
+    if (thread_list[tid].status == Status::TERMINATED){ // no such thread exists
+        return RET_ERR;
+    }
+    thread_list[tid].state = State::BLOCKED;
+
+    threadID running_thread = 0;
+    if (running_thread == tid){ // thread blocking itself
+        //todo scheduling decision
+    }
+
     return RET_SUCCESS;
 }
 
-// TODO: Implement
+
 int uthread_resume(int tid){
-    printf("pass\r\n");
+    Mask m{MaskingCode::SCHEDULER}; // masking object
+    if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to resume main thread or boundary error
+        return RET_ERR;
+    }
+    if (thread_list[tid].status == Status::TERMINATED){ // no such thread exists
+        return RET_ERR;
+    }
+
+    // set as ready, without overwriting running state if necessary
+    if (thread_list[tid].state == State::BLOCKED) {
+        thread_list[tid].state = State::READY;
+    }
+
     return RET_SUCCESS;
 }
 
-// TODO: Implement
+
 int uthread_sync(int tid){
-    printf("pass\r\n");
+    Mask m{MaskingCode::SCHEDULER}; // masking object
+    if (tid < 0 || tid > MAX_THREAD_NUM || thread_list[tid].status == Status::TERMINATED){
+        return RET_ERR;
+    }
+    //todo: add check to see if RUNNING thread, the one that called this function, is 0 (scheduler)
+    int callee_id = uthread_get_tid();
+    thread_list[callee_id].state = BLOCKED;
+    thread_list[tid].synced_threads.push((threadID)callee_id);
+
+    //todo: make scheduling decision.
+
     return RET_SUCCESS;
 }
 

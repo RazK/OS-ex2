@@ -16,7 +16,7 @@
 char stack1[STACK_SIZE];
 char stack2[STACK_SIZE];
 
-sigjmp_buf env[2];
+//sigjmp_buf env[2];
 
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
