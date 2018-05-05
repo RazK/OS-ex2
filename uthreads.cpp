@@ -10,6 +10,10 @@
 #include <list>
 #include <stdexcept>
 #include <exception>
+#include <iostream>
+
+#define MSG_SYSTEM_ERR "system error: "
+#define MSG_LIBRARY_ERR "thread library error:"
 
 const int RET_ERR = (-1);
 const int RET_SUCCESS = 0;
@@ -116,36 +120,29 @@ typedef struct _Mask{
 
     explicit _Mask(MaskingCode code){
         int return_val;
-//        return_val = ;
         if (RET_ERR == sigemptyset(&cur_set))
         {
-            throw std::exception();
+            std::cerr << MSG_SYSTEM_ERR << "Could not create empty set in Mask object constructor." << std::endl;
+            exit(1);
         }
         if (RET_ERR == sigaddset(&cur_set, SIGVTALRM))
         {
-            throw std::exception();
+            std::cerr << MSG_SYSTEM_ERR << "Could not add signal to set in Mask object constructor." << std::endl;
+            exit(1);
         }
         if (RET_ERR == sigprocmask(SIG_BLOCK, &cur_set, &old_set));
         {
-            throw std::exception();
+            std::cerr << MSG_SYSTEM_ERR << "Could not update set using sigprocmask in Mask object constructor." << std::endl;
+            exit(1);
         }
 
-
-
-        if (code == SCHEDULER){
-            //todo save old mask, and then add appropriate mask settings per scenario (code)
-            sigmask(1);
-        }
-        if (code == BLOCKING){
-            sigmask(1);
-        }
-//        return RET_SUCCESS;
     }
 
     ~_Mask(){
         if (RET_ERR == sigprocmask(SIG_SETMASK, &old_set, nullptr));
         {
-            throw std::exception();
+            std::cerr << MSG_SYSTEM_ERR << "Could not restore mask in Mask object destructor." << std::endl;
+            exit(1);
         }
     }
 
@@ -204,7 +201,6 @@ int uthread_spawn(void (*f)()){
     // Find the minimal ID not yet taken.
     for (id = 1; id < MAX_THREAD_NUM; id++){
         if (thread_list[id].status == Status::TERMINATED){ // Can be shortened to if(..status)
-
             break;
         }
     }
