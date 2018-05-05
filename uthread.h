@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <queue>
+#include <array>
 #include <csignal>
 
 #ifdef __x86_64__
@@ -58,6 +59,12 @@ typedef enum _State {
     NUM_OF_STATES
 } State;
 
+typedef enum _BlockReason {
+    SYNC,
+    REQUEST,
+    NUM_OF_REASONS
+} BlockReason;
+
 typedef enum _Status {
     ALIVE,
     TERMINATED,
@@ -74,6 +81,7 @@ public:
 public:
     ErrorCode SetStatus(Status status);
     ErrorCode SetState(State state);
+    ErrorCode SetBlocked(BlockReason reason);
     ErrorCode PushSynced(UThreadID utid_synced_with_me) const;
     ErrorCode PopSynced() const;
 
@@ -81,17 +89,17 @@ public:
     State GetState() const;
     UThreadID FrontSynced() const;
     bool IsSyncedEmpty() const;
+    std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
     //ErrorCode AddImSyncedWith(UThreadID utid_im_synced_with);
 
 private:
-    //address_t sp;         // Stack Pointer: Address of thread's stack head
-    //address_t pc;         // Program Counter: Address of thread's current instruction
-    State state_;           // Scheduling State: one of [Ready, Running, Blocked]
-    Status status_;         // Thread Status: alive or terminated.
-    bool blocked_sync;      // Blocked because waiting for synced thread
-    bool blocked_request;   // Blocked because other thread requested
-    std::queue <UThreadID> synced_with_me_; // All the threads that called "sync" for this thread.
-    //std::queue <UThreadID> im_synced_with_; // All the threads that called "sync" for this thread.
+    //address_t sp;                                     // Stack Pointer: Address of thread's stack head
+    //address_t pc;                                     // Program Counter: Address of thread's current instruction
+    State state_;                                       // Scheduling State: one of [Ready, Running, Blocked]
+    Status status_;                                     // Thread Status: alive or terminated.
+    std::array <bool, NUM_OF_REASONS> blocked_reasons;  // Blocked because waiting for synced thread
+    std::queue <UThreadID> synced_with_me_;             // All the threads that called "sync" for this thread.
+    //std::queue <UThreadID> im_synced_with_;           // All the threads that called "sync" for this thread.
     // TODO: allocate memory in CTOR for this queue
     // TODO: free queue's memory in DTOR
 

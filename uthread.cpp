@@ -30,7 +30,19 @@ ErrorCode UThread::SetStatus(const Status status){
 }
 
 ErrorCode UThread::SetState(const State state){
+    if (state == State::BLOCKED){
+        // BAD! Use SetBlocked with reason instead!
+        return FAILED;
+    }
+
     this->state_ = state;
+    // TODO: always just set and return?
+    return SUCCESS;
+}
+
+ErrorCode UThread::SetBlocked(BlockReason reason){
+    this->state_ = State::BLOCKED;
+    this->blocked_reasons[reason] = true;
     // TODO: always just set and return?
     return SUCCESS;
 }
@@ -62,3 +74,8 @@ UThreadID UThread::FrontSynced() const{
 bool UThread::IsSyncedEmpty() const{
     return this->synced_with_me_.empty();
 }
+
+std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
+    return this->blocked_reasons;
+};
+
