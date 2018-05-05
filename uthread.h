@@ -67,6 +67,7 @@ public:
     ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
     ErrorCode InitEnv(void* func);
+    ErrorCode FreeStack();
 
     Status GetStatus() const;
     State GetState() const;

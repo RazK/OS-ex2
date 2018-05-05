@@ -45,9 +45,7 @@ UThread::UThread() {
 }
 
 UThread::~UThread() {
-    if (this->stack){
-        free(this->stack);
-    }
+    FreeStack(); // not validating return value because all are legit
 }
 
 ErrorCode UThread::SetStatus(const Status status){
@@ -127,6 +125,15 @@ ErrorCode UThread::InitEnv(void* func){
     (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
     return ErrorCode::SUCCESS;
 }
+
+ErrorCode UThread::FreeStack(){
+    if (this->stack != nullptr){
+        free(this->stack);
+        return ErrorCode::SUCCESS;
+    }
+    return ErrorCode::FAILED;
+}
+
 
 sigjmp_buf& UThread::GetEnv(){
     return this->env_;
