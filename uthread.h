@@ -64,35 +64,6 @@ typedef enum _Status {
     NUM_OF_STATUSES
 } Status;
 
-typedef enum _MaskingCode {
-    SCHEDULER,
-    BLOCKING,
-    NUMBER_OF_CODES
-
-} MaskingCode;
-
-// A masking object. This short lived object is intended to call the appropriate masking function
-// in any given scenario, and call the reciprocal unmask function when the scope is exited.
-typedef struct _Mask{
-
-    explicit _Mask(MaskingCode code){
-        if (code == SCHEDULER){
-            //todo save old mask, and then add appropriate mask settings per scenario (code)
-            sigmask(1);
-        }
-        if (code == BLOCKING){
-            sigmask(1);
-        }
-//        return RET_SUCCESS;
-    }
-
-    ~_Mask(){
-        //todo reinstate old mask
-        sigmask(1);
-    }
-
-} Mask;
-
 class UThread {
 
 public:

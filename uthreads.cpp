@@ -3,6 +3,7 @@
 //
 #include "uthreads.h"
 #include "uthread.h"
+#include "mask.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <setjmp.h>
@@ -22,49 +23,6 @@ const int RET_SUCCESS = 0;
 const int ID_SCHEDUELER = 0;
 const int ID_FIRST_USER_THREAD = 1;
 
-
-typedef enum _MaskingCode {
-    SCHEDULER,
-    BLOCKING,
-    NUMBER_OF_CODES
-
-} MaskingCode;
-
-// A masking object. This short lived object is intended to call the appropriate masking function
-// in any given scenario, and call the reciprocal unmask function when the scope is exited.
-typedef struct _Mask{
-    sigset_t old_set{};
-    sigset_t cur_set{};
-
-    explicit _Mask(MaskingCode code){
-        int return_val;
-        if (RET_ERR == sigemptyset(&cur_set))
-        {
-            std::cerr << MSG_SYSTEM_ERR << "Could not create empty set in Mask object constructor." << std::endl;
-            exit(1);
-        }
-        if (RET_ERR == sigaddset(&cur_set, SIGVTALRM))
-        {
-            std::cerr << MSG_SYSTEM_ERR << "Could not add signal to set in Mask object constructor." << std::endl;
-            exit(1);
-        }
-        if (RET_ERR == sigprocmask(SIG_BLOCK, &cur_set, &old_set));
-        {
-            std::cerr << MSG_SYSTEM_ERR << "Could not update set using sigprocmask in Mask object constructor." << std::endl;
-            exit(1);
-        }
-
-    }
-
-    ~_Mask(){
-        if (RET_ERR == sigprocmask(SIG_SETMASK, &old_set, nullptr));
-        {
-            std::cerr << MSG_SYSTEM_ERR << "Could not restore mask in Mask object destructor." << std::endl;
-            exit(1);
-        }
-    }
-
-} Mask;
 
 /* Scheduler thread stack */
 char stack_scheduler[STACK_SIZE];
