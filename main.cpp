@@ -20,7 +20,7 @@ int main(){
         return RET_ERR;
     }
 
-    // assert legal opening state.
+    // assert legal opening state_.
     return_val = uthread_get_total_quantums();
     if (return_val != 1){
         printf("Failure after init of uthreads library: Total number of quantums incorrect.\r\n"

@@ -8,7 +8,7 @@ SET( EXE_3 DemoJmp )
 SET( EXE_4 DemoSingIntHandler )
 
 ADD_EXECUTABLE( ${EXE_1} main.cpp )
-ADD_EXECUTABLE( ${EXE_2} demo_itimer.c )
+ADD_EXECUTABLE( ${EXE_2} demo_itimer.c uthread.cpp)
 ADD_EXECUTABLE( ${EXE_3} demo_jmp.c )
 ADD_EXECUTABLE( ${EXE_4} demo_singInt_handler.c)
 

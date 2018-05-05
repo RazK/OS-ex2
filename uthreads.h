@@ -55,7 +55,7 @@ int uthread_terminate(int tid);
  * be resumed later using uthread_resume. If no thread with ID tid exists it
  * is considered as an error. In addition, it is an error to try blocking the
  * main thread (tid == 0). If a thread blocks itself, a scheduling decision
- * should be made. Blocking a thread in BLOCKED state has no
+ * should be made. Blocking a thread in BLOCKED state_ has no
  * effect and is not considered as an error.
  * Return value: On success, return 0. On failure, return -1.
 */
@@ -64,7 +64,7 @@ int uthread_block(int tid);
 
 /*
  * Description: This function resumes a blocked thread with ID tid and moves
- * it to the READY state. Resuming a thread in a RUNNING or READY state
+ * it to the READY state_. Resuming a thread in a RUNNING or READY state_
  * has no effect and is not considered as an error. If no thread with
  * ID tid exists it is considered as an error.
  * Return value: On success, return 0. On failure, return -1.
@@ -74,14 +74,14 @@ int uthread_resume(int tid);
 
 /*
  * Description: This function blocks the RUNNING thread until thread with
- * ID tid will move to RUNNING state (i.e.right after the next time that
+ * ID tid will move to RUNNING state_ (i.e.right after the next time that
  * thread tid will stop running, the calling thread will be resumed
  * automatically). If thread with ID tid will be terminated before RUNNING
- * again, the calling thread should move to READY state right after thread
+ * again, the calling thread should move to READY state_ right after thread
  * tid is terminated (i.e. it won’t be blocked forever). It is considered
  * as an error if no thread with ID tid exists or if the main thread (tid==0)
  * calls this function. Immediately after the RUNNING thread transitions to
- * the BLOCKED state a scheduling decision should be made.
+ * the BLOCKED state_ a scheduling decision should be made.
  * Return value: On success, return 0. On failure, return -1.
 */
 int uthread_sync(int tid);
@@ -107,9 +107,9 @@ int uthread_get_total_quantums();
 
 /*
  * Description: This function returns the number of quantums the thread with
- * ID tid was in RUNNING state. On the first time a thread runs, the function
+ * ID tid was in RUNNING state_. On the first time a thread runs, the function
  * should return 1. Every additional quantum that the thread starts should
- * increase this value by 1 (so if the thread with ID tid is in RUNNING state
+ * increase this value by 1 (so if the thread with ID tid is in RUNNING state_
  * when this function is called, include also the current quantum). If no
  * thread with ID tid exists it is considered as an error.
  * Return value: On success, return the number of quantums of the thread with ID tid. On failure, return -1.
