@@ -66,14 +66,14 @@ public:
     ErrorCode PushSynced(UThreadID utid_synced_with_me);
     ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
-    ErrorCode InitEnv(char* stack, void* func);
+    ErrorCode InitEnv(void* func);
+    ErrorCode GetEnv(sigjmp_buf* o_env);
 
     Status GetStatus() const;
     State GetState() const;
     UThreadID FrontSynced() const;
     bool IsSyncedEmpty() const;
     const std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
-    //const sigjmp_buf GetEnv();
     //ErrorCode AddImSyncedWith(UThreadID utid_im_synced_with);
 
 private:
@@ -82,6 +82,9 @@ private:
     State state_;                                       // Scheduling State: one of [Ready, Running, Blocked]
     Status status_;                                     // Thread Status: alive or terminated.
     sigjmp_buf env_;
+    char* stack;
+    address_t sp_;
+    address_t pc_;
 
     std::array <bool, NUM_OF_REASONS> blocked_reasons;  // Blocked because waiting for synced thread
     std::queue <UThreadID> synced_with_me_;             // All the threads that called "sync" for this thread.

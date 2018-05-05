@@ -26,8 +26,6 @@ static UThreadID running_thread;
 char stack_scheduler[STACK_SIZE];
 std::queue <UThreadID> ready_queue;
 
-/* Scheduler thread function */
-// TODO: Implement real scheduler function
 
 //void switchThreads(void)
 //{
@@ -47,12 +45,13 @@ static int total_quantums;
 
 /* Threads descriptor lookup table. */
 UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
-sigjmp_buf env[MAX_THREAD_NUM];
+sigjmp_buf env_list[MAX_THREAD_NUM];
+//sigjmp_buf env[MAX_THREAD_NUM];
 
 
 void switch_threads(void ){
     // Find first ready thread which is neither BLOCKED nor TERMINATED
-    UThreadID nextUTID;
+    UThreadID nextUTID = 0;
 
     while (!ready_queue.empty()) {
         nextUTID = ready_queue.front();
@@ -65,18 +64,20 @@ void switch_threads(void ){
     // Validate ready_queue is not empty (FATAL ERROR)
     if (ready_queue.empty()) {
         std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
+        return;
         //return RET_ERR;
     }
 
     // Save env for current thread and then jump to next one
-    UThreadID currentUTID = (UThreadID)uthread_get_tid();
-    int ret_val = sigsetjmp(thread_list[currentUTID].GetEnv(), 1);
+    auto currentUTID = (UThreadID)uthread_get_tid();
+//    int ret_val = sigsetjmp(thread_list[currentUTID].GetEnv(), 1);
+    int ret_val = sigsetjmp(env_list[currentUTID], 1);
     if (ret_val == SIG_RET_FROM_JUMP){
         return;
     }
     running_thread = nextUTID;
-    siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
-    return;
+//    siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
+    siglongjmp(env_list[nextUTID], SIG_RET_FROM_JUMP);
 }
 
 //std::list <std::queue>
@@ -164,7 +165,10 @@ int uthread_spawn(void (*f)()){
     ready_queue.push((UThreadID)id); // cast for type protection
 
     char* stack = (char*)(malloc(STACK_SIZE));
-    thread_list[id].InitEnv(stack, )
+    if (stack == nullptr){
+        std::cout << MSG_SYSTEM_ERR << "Malloc failed in spawn. Thread ID " << id << std::endl;
+    }
+    thread_list[id].InitEnv(&f);
     return id;
 }
 
@@ -184,7 +188,6 @@ int uthread_terminate(int tid){
     //todo: check state_? what if it is running or blocked?
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetStatus(Status::TERMINATED)){
-        std::cerr << MSG_LIBRARY_ERR << "Could not set the status: ID " << tid << std::endl;
         return RET_ERR;
     }
 
@@ -216,6 +219,7 @@ int uthread_terminate(int tid){
     }
 
     return RET_SUCCESS;
+
 }
 
 int uthread_block(int tid){

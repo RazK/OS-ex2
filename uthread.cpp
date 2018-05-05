@@ -37,24 +37,17 @@
 #endif
 
 UThread::UThread() {
-    //sp = NULL;
-    //pc = NULL;
+    this->stack = nullptr;
+    this->sp_ = (address_t)NULL;
+    this->pc_ = (address_t)NULL;
     state_ = State::READY;
     status_ = Status::TERMINATED;
-    // TODO: allocate synced_threads queue
-}
-
-UThread::UThread(address_t sp, address_t pc, State state, Status status) {
-    //this->sp = sp;
-    //this->pc = pc;
-    this->state_ = state;
-    this->status_ = status;
-    this->InitEnv(sp, pc);
-    // TODO: free synced_threads queue
 }
 
 UThread::~UThread() {
-
+    if (this->stack){
+        free(this->stack);
+    }
 }
 
 ErrorCode UThread::SetStatus(const Status status){
@@ -121,13 +114,18 @@ ErrorCode UThread::UnBlock(BlockReason reason){
 
 }; // Set the given block reason to false, if both are now false - Ready
 
-ErrorCode UThread::InitEnv(char* stack, void* func){
-    address_t sp, pc;
-    sp = (address_t)stack + STACK_SIZE - sizeof(address_t);
-    pc = (address_t)func;
-    sigsetjmp(this->env_, 1);
-    (this->env_->__jmpbuf)[JB_SP] = translate_address(sp);
-    (this->env_->__jmpbuf)[JB_PC] = translate_address(pc);
+ErrorCode UThread::InitEnv(void* func){
+    this->stack = (char*) malloc(STACK_SIZE);
+    if (stack == nullptr){
+        std::cerr << MSG_SYSTEM_ERR << "Could not allocate memory in environment init";
+        exit(1);
+    }
+    this->sp_ = (address_t)stack + STACK_SIZE - sizeof(address_t);
+    this->pc_ = (address_t)func;
+//    sigsetjmp(this->env_, 1);
+    (this->env_->__jmpbuf)[JB_SP] = translate_address(this->sp_);
+    (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
+    return ErrorCode::SUCCESS;
 }
 
 
@@ -151,3 +149,7 @@ const std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
     return this->blocked_reasons;
 };
 
+//ErrorCode UThread::GetEnv(sigjmp_buf o_env){
+//    o_env = this->env_;
+//    return ErrorCode::SUCCESS;
+//}
