@@ -5,6 +5,10 @@
 #ifndef PROJECT_MASK_H
 #define PROJECT_MASK_H
 
+#include <signal.h>
+#include "err_codes.h"
+#include <iostream>
+
 typedef enum _MaskingCode {
     SCHEDULER,
     BLOCKING,
@@ -17,7 +21,7 @@ typedef enum _MaskingCode {
 class Mask{
 
 public:
-    Mask(MaskingCode code);
+    Mask();
     ~Mask();
 
 private:

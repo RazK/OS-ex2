@@ -1,8 +1,9 @@
 // mask.cpp
 // Created by razkarl on 5/5/18.
 //
+#include "mask.h"
 
-Mask::Mask(MaskingCode code){
+Mask::Mask(){
     int return_val;
 
     if (RET_ERR == sigemptyset(&cur_set)) {

@@ -3,6 +3,7 @@
 #define UTHREAD_H
 
 #include <sys/types.h>
+#include "err_codes.h"
 #include <queue>
 #include <array>
 #include <csignal>
@@ -46,11 +47,6 @@
 
 typedef u_int8_t UThreadID;
 
-typedef enum _ErrorCode {
-    SUCCESS = 0,
-    FAILED = -1,
-    UNKNOWN = 1
-} ErrorCode;
 
 typedef enum _State {
     READY,
@@ -82,8 +78,8 @@ public:
     ErrorCode SetStatus(Status status);
     ErrorCode SetState(State state);
     ErrorCode SetBlocked(BlockReason reason);
-    ErrorCode PushSynced(UThreadID utid_synced_with_me) const;
-    ErrorCode PopSynced() const;
+    ErrorCode PushSynced(UThreadID utid_synced_with_me);
+    ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
 
     Status GetStatus() const;

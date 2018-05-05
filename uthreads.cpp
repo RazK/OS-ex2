@@ -4,6 +4,7 @@
 #include "uthreads.h"
 #include "uthread.h"
 #include "mask.h"
+#include "err_codes.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <setjmp.h>
@@ -13,12 +14,6 @@
 #include <stdexcept>
 #include <exception>
 #include <iostream>
-
-#define MSG_SYSTEM_ERR "system error: "
-#define MSG_LIBRARY_ERR "thread library error:"
-
-const int RET_ERR = (-1);
-const int RET_SUCCESS = 0;
 
 const int ID_SCHEDUELER = 0;
 const int ID_FIRST_USER_THREAD = 1;
@@ -45,7 +40,7 @@ std::queue <UThreadID> ready_queue;
 //std::list <std::queue>
 
 int uthread_init(int quantum_usecs){
-    Mask m{MaskingCode::SCHEDULER}; // masking object
+    Mask m{}; // masking object
     if (quantum_usecs < 0){
         return RET_ERR;
     }
@@ -71,7 +66,7 @@ int uthread_init(int quantum_usecs){
 }
 
 int uthread_spawn(void (*f)()){
-    Mask m{MaskingCode::SCHEDULER}; // masking object
+    Mask m{}; // masking object
     int id;
 
     // Find the minimal ID not yet taken.
@@ -111,7 +106,7 @@ int uthread_spawn(void (*f)()){
 
 
 int uthread_terminate(int tid){
-    Mask m{MaskingCode::SCHEDULER}; // masking object
+    Mask m{}; // masking object
     if (tid < 0 || tid > MAX_THREAD_NUM){
         std::cerr << MSG_LIBRARY_ERR << "Attempting to terminate illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
@@ -129,9 +124,9 @@ int uthread_terminate(int tid){
         return RET_ERR;
     }
 
-    if (thread_list[tid].G){
-
-    }
+//    if (thread_list[tid].G){
+//
+//    }
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
         std::cerr << MSG_LIBRARY_ERR << "Could not set the state: ID " << tid << std::endl;
@@ -160,7 +155,7 @@ int uthread_terminate(int tid){
 }
 
 int uthread_block(int tid){
-    Mask m{MaskingCode::SCHEDULER}; // masking object
+    Mask m{}; // masking object
     if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to block main thread or boundary error
         std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
@@ -173,10 +168,8 @@ int uthread_block(int tid){
     }
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetBlocked(BlockReason::REQUEST)){
-        std::cerr << MSG_LIBRARY_ERR << "Failed to block: ID " << tid << std::endl;
         return RET_ERR;
     }
-
 
     int running_thread = uthread_get_tid();
     if (running_thread == tid){ // thread blocking itself
@@ -188,26 +181,22 @@ int uthread_block(int tid){
 
 
 int uthread_resume(int tid){
-    Mask m{MaskingCode::SCHEDULER}; // masking object
+    Mask m{}; // masking object
     if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to resume main thread or boundary error
         std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
-
     if (Status::TERMINATED == thread_list[tid].GetStatus()){ // no such thread exists
         return RET_ERR;
     }
 
-    if (ErrorCode::SUCCESS == thread_list[tid].UnBlock(BlockReason::REQUEST)){
-
+    if (ErrorCode::SUCCESS != thread_list[tid].UnBlock(BlockReason::REQUEST)){
+        return RET_ERR;
     }
 
-    // set as ready, without overwriting running state_ if necessary
-    if (State::BLOCKED == thread_list[tid].GetState()) {
-        if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
-            return RET_ERR;
-        }
+    if (State::READY == thread_list[tid].GetState()){
+        ready_queue.push((UThreadID) tid);
     }
 
     return RET_SUCCESS;
@@ -215,15 +204,15 @@ int uthread_resume(int tid){
 
 
 int uthread_sync(int tid){
-    Mask m{MaskingCode::SCHEDULER}; // masking object
+    Mask m{}; // masking object
     if (tid < 0 || tid > MAX_THREAD_NUM || Status::TERMINATED == thread_list[tid].GetStatus()){
-
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
-    //todo: add check to see if RUNNING thread, the one that called this function, is 0 (scheduler)
     int callee_id = uthread_get_tid();
-    if (ErrorCode::SUCCESS != thread_list[callee_id].SetState(BLOCKED)){
+
+    if (ErrorCode::SUCCESS != thread_list[callee_id].SetBlocked(BlockReason::SYNC)){
         return RET_ERR;
     }
 

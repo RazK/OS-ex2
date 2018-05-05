@@ -47,13 +47,13 @@ ErrorCode UThread::SetBlocked(BlockReason reason){
     return SUCCESS;
 }
 
-ErrorCode UThread::PushSynced(UThreadID utid_synced_with_me) const{
+ErrorCode UThread::PushSynced(UThreadID utid_synced_with_me){
     this->synced_with_me_.push(utid_synced_with_me);
     // TODO: always just set and return?
     return SUCCESS;
 }
 
-ErrorCode UThread::PopSynced() const{
+ErrorCode UThread::PopSynced(){
     this->synced_with_me_.pop();
     // TODO: always just set and return?
     return SUCCESS;
