@@ -74,6 +74,7 @@ void switch_threads(void ){
     if (ret_val == SIG_RET_FROM_JUMP){
         return;
     }
+    running_thread = nextUTID;
     siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
     return;
 }
@@ -105,19 +106,22 @@ int uthread_init(int quantum_usecs){
         return RET_ERR;
     }
     total_quantums = 1;
+    running_thread = 0;
 
-    // TODO: Init scheduler thread
-    auto sp = (address_t)stack_scheduler + STACK_SIZE - sizeof(address_t);
-    auto pc = (address_t)sig_alarm_handler;
-    thread_list[ID_SCHEDUELER] = UThread(sp, pc, State::RUNNING, Status::ALIVE);
-    sigsetjmp(env[ID_SCHEDUELER], 1);
-    (env[0]->__jmpbuf)[JB_SP] = translate_address(sp);
-    (env[0]->__jmpbuf)[JB_PC] = translate_address(pc);
-    sigemptyset(&env[0]->__saved_mask);
+
+
+//    // TODO: Init scheduler thread
+//    auto sp = (address_t)stack_scheduler + STACK_SIZE - sizeof(address_t);
+//    auto pc = (address_t)sig_alarm_handler;
+//    thread_list[ID_SCHEDUELER] = UThread(sp, pc, State::RUNNING, Status::ALIVE);
+//    sigsetjmp(env[ID_SCHEDUELER], 1);
+//    (env[0]->__jmpbuf)[JB_SP] = translate_address(sp);
+//    (env[0]->__jmpbuf)[JB_PC] = translate_address(pc);
+//    sigemptyset(&env[0]->__saved_mask);
  
     // Init user threads
     for (int thread_id = ID_FIRST_USER_THREAD; thread_id < MAX_THREAD_NUM; thread_id++){
-        thread_list[thread_id] = UThread();
+        thread_list[thread_id] = UThread{};
     }
 
     // todo: Should we already enter infinite loop of running threads as they come?
@@ -159,8 +163,8 @@ int uthread_spawn(void (*f)()){
 
     ready_queue.push((UThreadID)id); // cast for type protection
 
-    //todo: run f?
-
+    char* stack = (char*)(malloc(STACK_SIZE));
+    thread_list[id].InitEnv(stack, )
     return id;
 }
 
