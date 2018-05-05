@@ -17,7 +17,7 @@ void timer_handler(int sig)
   printf("Timer expired\n");
 }
 
-
+#if DEBUG_ITIMER
 int main(void) {
     printf("In demo_timer.c\r\n");
 	struct sigaction sa;
@@ -49,4 +49,4 @@ int main(void) {
 		}
 	}
 }
-
+#endif

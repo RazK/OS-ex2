@@ -4,6 +4,7 @@
  * Author: OS, os@cs.huji.ac.il
  */
 
+#if DEBUG_JMP
 #include <stdio.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -124,4 +125,5 @@ int main(void)
   siglongjmp(env[0], 1);
   return 0;
 }
+#endif
 

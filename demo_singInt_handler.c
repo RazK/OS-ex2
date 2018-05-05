@@ -15,7 +15,7 @@ void catch_int(int sigNum) {
 	fflush(stdout);
  }
 
-
+#if DEBUG_SIG_INT_HANDLER
 int main(void)
 {
 	printf("In demo_sigInt_handler.c\r\n");
@@ -32,4 +32,4 @@ int main(void)
   }
   return 0;
 }
-
+#endif
