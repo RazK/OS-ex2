@@ -103,7 +103,7 @@ bool UThread::IsSyncedEmpty() const{
     return this->synced_with_me_.empty();
 }
 
-const std::array <bool, NUM_OF_REASONS> const UThread::GetBlockedReasons() const{
+const std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
     return this->blocked_reasons;
 };
 

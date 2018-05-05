@@ -21,11 +21,15 @@ const int ID_FIRST_USER_THREAD = 1;
 
 /* Scheduler thread stack */
 char stack_scheduler[STACK_SIZE];
+std::queue <UThreadID> ready_queue;
 
 /* Scheduler thread function */
 // TODO: Implement real scheduler function
 int scheduler_f(){
+    Mask m{};
     printf("Hi i'm the scheduler\r\n");
+    
+
     return RET_SUCCESS;
 }
 
@@ -36,7 +40,7 @@ static int total_quantums;
 UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
 sigjmp_buf env[MAX_THREAD_NUM];
 
-std::queue <UThreadID> ready_queue;
+
 //std::list <std::queue>
 
 int uthread_init(int quantum_usecs){
