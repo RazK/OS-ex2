@@ -113,20 +113,28 @@ int uthread_spawn(void (*f)()){
 int uthread_terminate(int tid){
     Mask m{MaskingCode::SCHEDULER}; // masking object
     if (tid < 0 || tid > MAX_THREAD_NUM){
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to terminate illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
-    if (Status::TERMINATED != thread_list[tid].GetStatus()){ // Already terminated or doesn't exist
+    if (Status::TERMINATED == thread_list[tid].GetStatus()){ // Already terminated or doesn't exist
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to terminate a non-existent thread: ID " << tid << std::endl;
         return RET_ERR;
     }
 
     //todo: check state_? what if it is running or blocked?
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetStatus(Status::TERMINATED)){
+        std::cerr << MSG_LIBRARY_ERR << "Could not set the status: ID " << tid << std::endl;
         return RET_ERR;
     }
 
+    if (thread_list[tid].G){
+
+    }
+
     if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
+        std::cerr << MSG_LIBRARY_ERR << "Could not set the state: ID " << tid << std::endl;
         return RET_ERR;
     }
 
@@ -154,20 +162,23 @@ int uthread_terminate(int tid){
 int uthread_block(int tid){
     Mask m{MaskingCode::SCHEDULER}; // masking object
     if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to block main thread or boundary error
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
     // no such thread exists?
     if (Status::TERMINATED == thread_list[tid].GetStatus()){
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block non-existent thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
-    if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::BLOCKED)){
+    if (ErrorCode::SUCCESS != thread_list[tid].SetBlocked(_BlockedReason::REQUEST)){
+        std::cerr << MSG_LIBRARY_ERR << "Failed to block: ID " << tid << std::endl;
         return RET_ERR;
     }
 
-    // TODO: Get the real running_thread
-    UThreadID running_thread = 0;
+
+    int running_thread = uthread_get_tid();
     if (running_thread == tid){ // thread blocking itself
         //todo scheduling decision
     }
@@ -179,8 +190,10 @@ int uthread_block(int tid){
 int uthread_resume(int tid){
     Mask m{MaskingCode::SCHEDULER}; // masking object
     if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to resume main thread or boundary error
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
+
 
     if (Status::TERMINATED == thread_list[tid].GetStatus()){ // no such thread exists
         return RET_ERR;
@@ -200,6 +213,7 @@ int uthread_resume(int tid){
 int uthread_sync(int tid){
     Mask m{MaskingCode::SCHEDULER}; // masking object
     if (tid < 0 || tid > MAX_THREAD_NUM || Status::TERMINATED == thread_list[tid].GetStatus()){
+
         return RET_ERR;
     }
 
