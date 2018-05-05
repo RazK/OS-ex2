@@ -84,6 +84,7 @@ public:
     ErrorCode SetBlocked(BlockReason reason);
     ErrorCode PushSynced(UThreadID utid_synced_with_me) const;
     ErrorCode PopSynced() const;
+    ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
 
     Status GetStatus() const;
     State GetState() const;
