@@ -128,6 +128,9 @@ ErrorCode UThread::InitEnv(void* func){
     return ErrorCode::SUCCESS;
 }
 
+sigjmp_buf& UThread::GetEnv(){
+    return this->env_;
+}
 
 Status UThread::GetStatus() const{
     return this->status_;
@@ -148,8 +151,3 @@ bool UThread::IsSyncedEmpty() const{
 const std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
     return this->blocked_reasons;
 };
-
-//ErrorCode UThread::GetEnv(sigjmp_buf o_env){
-//    o_env = this->env_;
-//    return ErrorCode::SUCCESS;
-//}

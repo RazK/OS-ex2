@@ -67,13 +67,13 @@ public:
     ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
     ErrorCode InitEnv(void* func);
-    ErrorCode GetEnv(sigjmp_buf* o_env);
 
     Status GetStatus() const;
     State GetState() const;
     UThreadID FrontSynced() const;
     bool IsSyncedEmpty() const;
     const std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
+    sigjmp_buf& GetEnv();
     //ErrorCode AddImSyncedWith(UThreadID utid_im_synced_with);
 
 private:
