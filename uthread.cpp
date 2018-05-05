@@ -59,6 +59,34 @@ ErrorCode UThread::PopSynced() const{
     return SUCCESS;
 }
 
+ErrorCode UThread::UnBlock(BlockReason reason){
+    // Validate i'm currently blocked
+    if (State::BLOCKED != this->GetState()) {
+        return FAILED;
+    }
+
+    // Set the given reason to no longer blocking
+    this->blocked_reasons[reason] = false;
+
+    // Check if still blocked by other reasons
+    bool still_blocked = false;
+    for(const auto& cur_reason: blocked_reasons){
+        if (cur_reason){
+            still_blocked = true;
+            break;
+        }
+    }
+
+    // Not blocked anymore? --> READY
+    if (!still_blocked){
+        this->SetState(State::READY);
+    }
+
+    return SUCCESS;
+
+}; // Set the given block reason to false, if both are now false - Ready
+
+
 Status UThread::GetStatus() const{
     return this->status_;
 }
@@ -75,7 +103,7 @@ bool UThread::IsSyncedEmpty() const{
     return this->synced_with_me_.empty();
 }
 
-std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
+const std::array <bool, NUM_OF_REASONS> const UThread::GetBlockedReasons() const{
     return this->blocked_reasons;
 };
 
