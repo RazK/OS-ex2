@@ -78,6 +78,7 @@ private:
     //address_t pc;                                     // Program Counter: Address of thread's current instruction
     State state_;                                       // Scheduling State: one of [Ready, Running, Blocked]
     Status status_;                                     // Thread Status: alive or terminated.
+
     std::array <bool, NUM_OF_REASONS> blocked_reasons;  // Blocked because waiting for synced thread
     std::queue <UThreadID> synced_with_me_;             // All the threads that called "sync" for this thread.
     //std::queue <UThreadID> im_synced_with_;           // All the threads that called "sync" for this thread.
