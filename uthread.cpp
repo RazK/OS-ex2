@@ -2,6 +2,38 @@
 // Created by razkarl on 5/5/18.
 //
 #include "uthread.h"
+#include "err_codes.h"
+#include <iostream>
+
+#ifdef __x86_64__
+/* code for 64 bit Intel arch */
+
+    /* A translation is required when using an address of a variable.
+       Use this as a black box in your code. */
+    address_t translate_address(address_t addr)
+    {
+        address_t ret;
+        asm volatile("xor    %%fs:0x30,%0\n"
+                "rol    $0x11,%0\n"
+        : "=g" (ret)
+        : "0" (addr));
+        return ret;
+    }
+#else
+/* code for 32 bit Intel arch */
+
+    /* A translation is required when using an address of a variable.
+       Use this as a black box in your code. */
+    address_t translate_address(address_t addr)
+    {
+        address_t ret;
+        asm volatile("xor    %%gs:0x18,%0\n"
+            "rol    $0x9,%0\n"
+                     : "=g" (ret)
+                     : "0" (addr));
+        return ret;
+    }
+#endif
 
 UThread::UThread() {
     //sp = NULL;
@@ -62,6 +94,7 @@ ErrorCode UThread::PopSynced(){
 ErrorCode UThread::UnBlock(BlockReason reason){
     // Validate i'm currently blocked
     if (State::BLOCKED != this->GetState()) {
+        std::cerr << MSG_LIBRARY_ERR << "Can't unblock a thread in state " << this->GetState() << std::endl;
         return FAILED;
     }
 

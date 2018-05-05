@@ -1,18 +1,18 @@
-# CMake instructions to make the static lib
-ADD_LIBRARY( uthreads STATIC uthreads.cpp uthread.cpp mask.cpp err_codes.h)
+cmake_minimum_required(VERSION 3.8)
+project(OS_ex2)
 
-# CMake instructions to test using the static lib
-SET( EXE_1 StaticTest )
-#SET( EXE_2 DemoItimer )
-#SET( EXE_3 DemoJmp )
-#SET( EXE_4 DemoSingIntHandler )
+set(CMAKE_CXX_STANDARD 11)
 
-ADD_EXECUTABLE( ${EXE_1} main.cpp )
-#ADD_EXECUTABLE( ${EXE_2} demo_itimer.c)
-#ADD_EXECUTABLE( ${EXE_3} demo_jmp.c )
-#ADD_EXECUTABLE( ${EXE_4} demo_singInt_handler.c)
+set(SOURCE_FILES
+        demo_itimer.c
+        demo_jmp.c
+        demo_singInt_handler.c
+        main.cpp
+        mask.cpp
+        mask.h
+        uthread.cpp
+        uthread.h
+        uthreads.cpp
+        uthreads.h err_codes.h)
 
-TARGET_LINK_LIBRARIES( ${EXE_1} uthreads )
-#TARGET_LINK_LIBRARIES( ${EXE_2} uthreads )
-#TARGET_LINK_LIBRARIES( ${EXE_3} uthreads )
-#TARGET_LINK_LIBRARIES( ${EXE_4} uthreads )
+add_executable(OS_ex2 ${SOURCE_FILES} err_codes.h)

@@ -8,6 +8,7 @@
 #include <array>
 #include <csignal>
 
+
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
     typedef unsigned long address_t;
@@ -16,15 +17,7 @@
 
     /* A translation is required when using an address of a variable.
        Use this as a black box in your code. */
-    address_t translate_address(address_t addr)
-    {
-        address_t ret;
-        asm volatile("xor    %%fs:0x30,%0\n"
-                "rol    $0x11,%0\n"
-        : "=g" (ret)
-        : "0" (addr));
-        return ret;
-    }
+    address_t translate_address(address_t addr);
 
 #else
 /* code for 32 bit Intel arch */
@@ -34,19 +27,10 @@
 
     /* A translation is required when using an address of a variable.
        Use this as a black box in your code. */
-    address_t translate_address(address_t addr)
-    {
-        address_t ret;
-        asm volatile("xor    %%gs:0x18,%0\n"
-            "rol    $0x9,%0\n"
-                     : "=g" (ret)
-                     : "0" (addr));
-        return ret;
-    }
+    address_t translate_address(address_t addr);
 #endif
 
 typedef u_int8_t UThreadID;
-
 
 typedef enum _State {
     READY,
