@@ -4,7 +4,7 @@
  * Author: OS, os@cs.huji.ac.il
  */
 
-#if DEBUG_JMP
+#if 1 //DEBUG_JMP
 #include <stdio.h>
 #include <setjmp.h>
 #include <signal.h>

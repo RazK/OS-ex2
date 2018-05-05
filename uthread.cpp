@@ -2,6 +2,7 @@
 // Created by razkarl on 5/5/18.
 //
 #include "uthread.h"
+#include "uthreads.h"
 #include "err_codes.h"
 #include <iostream>
 
@@ -48,6 +49,7 @@ UThread::UThread(address_t sp, address_t pc, State state, Status status) {
     //this->pc = pc;
     this->state_ = state;
     this->status_ = status;
+    this->InitEnv(sp, pc);
     // TODO: free synced_threads queue
 }
 
@@ -118,6 +120,15 @@ ErrorCode UThread::UnBlock(BlockReason reason){
     return SUCCESS;
 
 }; // Set the given block reason to false, if both are now false - Ready
+
+ErrorCode UThread::InitEnv(address_t stack, address_t func){
+    address_t sp, pc;
+    sp = (address_t)stack + STACK_SIZE - sizeof(address_t);
+    pc = (address_t)func;
+    sigsetjmp(this->env_, 1);
+    (this->env_->__jmpbuf)[JB_SP] = translate_address(sp);
+    (this->env_->__jmpbuf)[JB_PC] = translate_address(pc);
+}
 
 
 Status UThread::GetStatus() const{
