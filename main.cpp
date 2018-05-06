@@ -1,89 +1,64 @@
 /**********************************************
- * Test 1: correct threads ids
+ * Test 2: very simple sync check
  *
  **********************************************/
 
 #include <cstdio>
 #include <cstdlib>
 #include "uthreads.h"
+#include <iostream>
 
 #define GRN "\e[32m"
 #define RED "\x1B[31m"
 #define RESET "\x1B[0m"
 
+bool thread2Spawned = false;
+bool thread2Executed = false;
+int count = 0;
+
+
 void halt()
 {
     while (true)
-    {}
-}
-
-void wait_next_quantum()
-{
-    int quantum = uthread_get_quantums(uthread_get_tid());
-    while (uthread_get_quantums(uthread_get_tid()) == quantum)
-    {}
-    return;
+    {
+        std::cout << count << "halting! (quantum should kill me any second now.. or not)?" << std::endl;
+        count += 1;
+    }
 }
 
 void thread1()
 {
-    uthread_block(uthread_get_tid());
+    while (!thread2Spawned)
+    {}
+    std::cout << "thread 1 recognized 2 spawned and now waits for it to sync" << std::endl;
+    uthread_sync(2);
+    if (!thread2Executed)
+    {
+        printf(RED "ERROR - thread did not wait to sync\n" RESET);
+        exit(1);
+    }
+    printf(GRN "SUCCESS\n" RESET);
+    uthread_terminate(0);
 }
 
 void thread2()
 {
+    thread2Executed = true;
     halt();
-}
-
-void error()
-{
-    printf(RED "ERROR - wrong id returned\n" RESET);
-    exit(1);
 }
 
 int main()
 {
-    printf(GRN "Test 1:    " RESET);
+    printf(GRN "Test 2:    " RESET);
     fflush(stdout);
 
-    uthread_init(1000000);
-    if (uthread_spawn(thread1) != 1)
-        error();
-    if (uthread_spawn(thread2) != 2)
-        error();
-    if (uthread_spawn(thread2) != 3)
-        error();
-    if (uthread_spawn(thread1) != 4)
-        error();
-    if (uthread_spawn(thread2) != 5)
-        error();
-    if (uthread_spawn(thread1) != 6)
-        error();
-
-    uthread_terminate(5);
-    if (uthread_spawn(thread1) != 5)
-        error();
-
-
-    wait_next_quantum();
-    wait_next_quantum();
-
-    uthread_terminate(5);
-    if (uthread_spawn(thread1) != 5)
-        error();
-
+    uthread_init(20);
+    uthread_spawn(thread1);
+    uthread_spawn(thread2);
+    thread2Spawned = true;
+    for(int i = 0; i < 100000000; i++){
+        printf("in loop of main\r\n");
+    }
     uthread_terminate(2);
-    if (uthread_spawn(thread2) != 2)
-        error();
-
-    uthread_terminate(3);
-    uthread_terminate(4);
-    if (uthread_spawn(thread2) != 3)
-        error();
-    if (uthread_spawn(thread1) != 4)
-        error();
-
-    printf(GRN "SUCCESS\n" RESET);
-    uthread_terminate(0);
-
+    halt();
 }

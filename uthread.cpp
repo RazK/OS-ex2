@@ -43,8 +43,8 @@ UThread::UThread() {
     this->state_ = State::READY;
     this->status_ = Status::TERMINATED;
     this->blocked_reasons = {false, false};
-    this->im_synced_with_ = std::set<UThreadID>{};
-    this->synced_with_me_ = std::queue<UThreadID>{};
+    this->im_waiting_for_ = std::set<UThreadID>{};
+    this->waiting_for_me_ = std::queue<UThreadID>{};
     this->quantum_counter = 0;
 }
 
@@ -76,29 +76,29 @@ ErrorCode UThread::SetBlocked(BlockReason reason){
     return SUCCESS;
 }
 
-ErrorCode UThread::PushSynced(UThreadID utid_synced_with_me){
-    this->synced_with_me_.push(utid_synced_with_me);
+ErrorCode UThread::PushWaitingForMe(UThreadID utid_waiting_for_me){
+    this->waiting_for_me_.push(utid_waiting_for_me);
     // TODO: always just set and return?
     return SUCCESS;
 }
 
-ErrorCode UThread::AddMySync(UThreadID utid_im_synced_with){
-    this->im_synced_with_.emplace(utid_im_synced_with);
+ErrorCode UThread::AddIWaitFor(UThreadID utid_im_waiting_for){
+    this->im_waiting_for_.emplace(utid_im_waiting_for);
     // TODO: always just set and return?
     return SUCCESS;
 }
 
-ErrorCode UThread::RemoveMySync(UThreadID utid_im_synced_with){
-    auto it = this->im_synced_with_.find(utid_im_synced_with);
-    auto res = this->im_synced_with_.erase(it);
+ErrorCode UThread::RemoveIWaitFor(UThreadID utid_im_waiting_for){
+    auto it = this->im_waiting_for_.find(utid_im_waiting_for);
+    auto res = this->im_waiting_for_.erase(it);
 
     // TODO: always just set and return?
     return SUCCESS;
 }
 
 
-ErrorCode UThread::PopSynced(){
-    this->synced_with_me_.pop();
+ErrorCode UThread::PopWaitingForMe(){
+    this->waiting_for_me_.pop();
     // TODO: always just set and return?
     return SUCCESS;
 }
@@ -136,9 +136,9 @@ ErrorCode UThread::InitThread(void (*func)(void)){
     // Note, this may be a multiple live cylcle of thread.
     this->state_ = State::READY;
     this->status_ = ALIVE;
-    this->im_synced_with_ = {};
-//    this->im_synced_with_.clear();
-    this->synced_with_me_ = std::queue<UThreadID> {};
+    this->im_waiting_for_ = {};
+//    this->im_waiting_for_.clear();
+    this->waiting_for_me_ = std::queue<UThreadID> {};
     this->quantum_counter = 0;
 
     // init env
@@ -163,8 +163,8 @@ ErrorCode UThread::InitThreadZero(){
     // Note, this may be a multiple live cylcle of thread.
     this->state_ = State::RUNNING;
     this->status_ = ALIVE;
-    this->im_synced_with_ = {};
-    this->synced_with_me_ = std::queue<UThreadID> {};
+    this->im_waiting_for_ = {};
+    this->waiting_for_me_ = std::queue<UThreadID> {};
     this->quantum_counter = 0;
 
     // init env
@@ -184,12 +184,12 @@ ErrorCode UThread::InitThreadZero(){
     return ErrorCode::SUCCESS;
 }
 
-ErrorCode UThread::FreeFromSyncWith(UThreadID tid){
-    auto it = this->im_synced_with_.find(tid);
-    auto res = this->im_synced_with_.erase(it);
+ErrorCode UThread::DismissUTIDIWaitFor(UThreadID tid){
+    auto it = this->im_waiting_for_.find(tid);
+    auto res = this->im_waiting_for_.erase(it);
     // Check blocking logic and restore state to ready if all reasons are void
-    if (this->im_synced_with_.empty()){ // no longer synced
-        this->blocked_reasons[BlockReason::SYNC] = false;
+    if (this->im_waiting_for_.empty()){ // no longer synced
+        this->blocked_reasons[BlockReason::WAITING] = false;
         if (!blocked_reasons[BlockReason::REQUEST]){ // check if still have blocked request
             this->state_ = READY;
         }
@@ -203,16 +203,11 @@ ErrorCode UThread::FreeStack(){
     if (this->stack != nullptr){
         free(this->stack);
         this->stack = nullptr;
-        this->sp_ = NULL;
-        this->pc_ = NULL;
+        this->sp_ = 0;
+        this->pc_ = 0;
         return ErrorCode::SUCCESS;
     }
     return ErrorCode::FAILED;
-}
-
-
-sigjmp_buf& UThread::GetEnv(){
-    return this->env_;
 }
 
 Status UThread::GetStatus() const{
@@ -223,12 +218,12 @@ State UThread::GetState() const{
     return this->state_;
 }
 
-UThreadID UThread::FrontSynced() const{
-    return this->synced_with_me_.front();
+UThreadID UThread::FrontWaitingForMe() const{
+    return this->waiting_for_me_.front();
 }
 
-bool UThread::IsSyncedEmpty() const{
-    return this->synced_with_me_.empty();
+bool UThread::IsWaitingForMeEmpty() const{
+    return this->waiting_for_me_.empty();
 }
 
 const std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
@@ -237,6 +232,9 @@ const std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
 
 ErrorCode UThread::IncQuantum(){
     quantum_counter += 1;
+    if (quantum_counter <= 0){
+        return ErrorCode::FAILED;
+    }
     return ErrorCode::SUCCESS;
 }
 

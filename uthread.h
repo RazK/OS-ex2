@@ -42,7 +42,7 @@ typedef enum _State {
 } State;
 
 typedef enum _BlockReason {
-    SYNC,
+    WAITING,
     REQUEST,
     NUM_OF_REASONS
 } BlockReason;
@@ -64,11 +64,11 @@ public:
     ErrorCode SetStatus(Status status);
     ErrorCode SetState(State state);
     ErrorCode SetBlocked(BlockReason reason);
-    ErrorCode PushSynced(UThreadID utid_synced_with_me);
-    ErrorCode AddMySync(UThreadID utid_im_synced_with);
-    ErrorCode RemoveMySync(UThreadID utid_im_synced_with);
-    ErrorCode FreeFromSyncWith(UThreadID tid);
-    ErrorCode PopSynced();
+    ErrorCode PushWaitingForMe(UThreadID utid_waiting_for_me);
+    ErrorCode AddIWaitFor(UThreadID utid_im_waiting_for);
+    ErrorCode RemoveIWaitFor(UThreadID utid_im_waiting_for);
+    ErrorCode DismissUTIDIWaitFor(UThreadID tid);
+    ErrorCode PopWaitingForMe();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
     ErrorCode InitThread(void (*func)(void));
     ErrorCode InitThreadZero();
@@ -79,19 +79,14 @@ public:
     Status GetStatus() const;
     State GetState() const;
     int GetQuantumCounter() const;
-    UThreadID FrontSynced() const;
-    bool IsSyncedEmpty() const;
+    UThreadID FrontWaitingForMe() const;
+    bool IsWaitingForMeEmpty() const;
     const std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
-    sigjmp_buf& GetEnv();
-    //ErrorCode AddImSyncedWith(UThreadID utid_im_synced_with);
     sigjmp_buf env_;
 
 private:
-    //address_t sp;                                     // Stack Pointer: Address of thread's stack head
-    //address_t pc;                                     // Program Counter: Address of thread's current instruction
     State state_;                                       // Scheduling State: one of [Ready, Running, Blocked]
     Status status_;                                     // Thread Status: alive or terminated.
-//    sigjmp_buf env_;
     char* stack;
     address_t sp_;
     address_t pc_;
@@ -99,8 +94,8 @@ private:
     int quantum_counter;                             // The number of quantumii per thread
 
     std::array <bool, NUM_OF_REASONS> blocked_reasons;  // Blocked because waiting for synced thread
-    std::queue <UThreadID> synced_with_me_;             // All the threads that called "sync" for this thread.
-    std::set <UThreadID> im_synced_with_;           // All the threads that this thread called "sync" for. All are unique
+    std::queue <UThreadID> waiting_for_me_;             // All the threads that called "sync" for this thread.
+    std::set <UThreadID> im_waiting_for_;               // All the threads that this thread called "sync" for. All are unique
     // TODO: allocate memory in CTOR for this queue
     // TODO: free queue's memory in DTOR
 

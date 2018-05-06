@@ -36,76 +36,57 @@ int total_quantums;
 /* Threads descriptor lookup table. */
 UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
 
-void f1 (void)
-{
-    int i = 0;
-    while(1){
-        ++i;
-        printf("in f (%d)\n",i);
-        if (i % 3 == 0) {
-            printf("f: switching\n");
-            switch_threads();
-        }
-        usleep(0.2*MIC_SEC_IN_SEC);
-    }
-}
 
-void switch_threads(void ){
+void switch_threads(bool isFromBlocked){
+    Mask m{};
     // Running thread goes to rest
-    ready_queue.push((UThreadID) running_thread);
-    thread_list[running_thread].SetState(State::READY);
+    UThreadID old_tid = running_thread;
+
+    // if not blocked then just go back to the ready line
+    if (!isFromBlocked) {
+        ready_queue.push((UThreadID) old_tid);
+        thread_list[old_tid].SetState(State::READY);
+    }
 
     // Find first ready thread which is neither BLOCKED nor TERMINATED
-    int nextUTID = -1;
+    UThreadID new_tid = MAX_THREAD_NUM;
     while (!ready_queue.empty()) {
-        nextUTID = ready_queue.front();
+        new_tid = ready_queue.front();
 
         // Clean threads_list from non-ready threads as you go
         ready_queue.pop();
 
         // Found ready thread? break
-        if (State::READY == thread_list[nextUTID].GetState()){
+        if (State::READY == thread_list[new_tid].GetState() &&
+            Status::ALIVE == thread_list[new_tid].GetStatus()){
             break;
         }
     }
 
     // Validate ready_queue is not empty (FATAL ERROR)
-    if (State::READY != thread_list[nextUTID].GetState()) {
+    if (State::READY != thread_list[new_tid].GetState()&&
+        Status::ALIVE == thread_list[new_tid].GetStatus()) {
         std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur." << std::endl;
         return;
     }
 
     // Save env for current thread and then jump to next one
-    auto currentUTID = (UThreadID)uthread_get_tid();
-//    int ret_val = sigsetjmp(thread_list[currentUTID].GetEnv(), 1);
-    int ret_val = sigsetjmp(thread_list[nextUTID].env_, 1);
-//    int ret_val = sigsetjmp(thread_list[], 1);
+    int ret_val = sigsetjmp(thread_list[old_tid].env_, 1);
     if (ret_val == SIG_RET_FROM_JUMP){
+        thread_list[old_tid].SetState(State::RUNNING);
+        running_thread = old_tid;
         return;
     }
-    running_thread = nextUTID;
-//    siglongjmp(thread_list[nextUTID].GetEnv(), SIG_RET_FROM_JUMP);
-    siglongjmp(thread_list[nextUTID].env_, SIG_RET_FROM_JUMP);
+    thread_list[new_tid].SetState(State::RUNNING);
+    running_thread = new_tid;
+    siglongjmp(thread_list[new_tid].env_, SIG_RET_FROM_JUMP); // TODO: Assert return value!!!
 }
 
 //std::list <std::queue>
 void sig_alarm_handler(int sig){
     Mask m{};
-
-    printf("In timer handler\n");
-    int cur_tid = uthread_get_tid();
-    // Add this thread to the end of the line and increment quantum
-    ready_queue.push((UThreadID) cur_tid);
-    thread_list[cur_tid].IncQuantum();
-
-    if (ready_queue.empty()) {
-        std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
-//        return RET_ERR;
-    }
-
-    UThreadID currentThread = ready_queue.front();
-    ready_queue.pop();
-//    switch_threads();
+    printf("sigalarm_handler here!!\r\n");
+    switch_threads(false);
 
 //    siglongjmp(thread_list[currentThread].GetEnv());
 
@@ -137,39 +118,11 @@ int uthread_init(int quantum_usecs){
     // Start a virtual timer. It counts down whenever this process is executing.
     ASSERT_SUCCESS(setitimer (ITIMER_VIRTUAL, &timer, nullptr), "setitimer error.", ERR_SYS);
 
-    // Construct all user threads (terminated)
-//    for (int thread_id = 0; thread_id < MAX_THREAD_NUM; thread_id++) {
-//        thread_list[thread_id] = UThread{};
-//    }
-
-    // Spawn thread 0 to take control from now on
     thread_list[0].InitThreadZero();
-    //uthread_spawn(nullptr); // TODO: whatsup with our nullptr? do we ever jump there? segfault!
-    // Manually set thread 0 to running
-    //thread_list[0].SetState(State::RUNNING);
-
 
     // Set global variables
     total_quantums = 1;
     running_thread = 0;
-
-//    quantum = quantum_usecs;
-
-
-
-
-
-    // TODO: Init scheduler thread
-//    auto sp = (address_t)stack_scheduler + STACK_SIZE - sizeof(address_t);
-//    auto pc = (address_t)sig_alarm_handler;
-//    thread_list[ID_SCHEDUELER] = UThread(sp, pc, State::RUNNING, Status::ALIVE);
-//    sigsetjmp(env[ID_SCHEDUELER], 1);
-//    (env[0]->__jmpbuf)[JB_SP] = translate_address(sp);
-//    (env[0]->__jmpbuf)[JB_PC] = translate_address(pc);
-//    sigemptyset(&env[0]->__saved_mask);
-
-
-
 
     return RET_SUCCESS;
 }
@@ -228,11 +181,11 @@ int uthread_terminate(int tid){
     // are alive
 
     // Iterate the queue of synced threads to allow them to run. Multiple checks need to take place.
-    while (!thread_list[tid].IsSyncedEmpty()){
-        UThreadID synced_thread = thread_list[tid].FrontSynced();
+    while (!thread_list[tid].IsWaitingForMeEmpty()){
+        UThreadID synced_thread = thread_list[tid].FrontWaitingForMe();
         // Check if this thread is still waiting for the dying thread:
 
-        if (ErrorCode::SUCCESS != thread_list[synced_thread].FreeFromSyncWith(tid)){
+        if (ErrorCode::SUCCESS != thread_list[synced_thread].DismissUTIDIWaitFor(tid)){
             return RET_ERR;
         }
 
@@ -246,7 +199,7 @@ int uthread_terminate(int tid){
 //        }
 
         // Whatever the results were of the last steps, we now pop the last dependant thread and press on.
-        if (ErrorCode::SUCCESS != thread_list[tid].PopSynced()){
+        if (ErrorCode::SUCCESS != thread_list[tid].PopWaitingForMe()){
             return RET_ERR;
         }
     }
@@ -274,7 +227,7 @@ int uthread_block(int tid){
 
     int running_thread = uthread_get_tid();
     if (running_thread == tid){ // thread blocking itself
-        //todo scheduling decision
+        switch_threads(true);
     }
 
     return RET_SUCCESS;
@@ -305,28 +258,28 @@ int uthread_resume(int tid){
 }
 
 
-int uthread_sync(int tid){
+int uthread_sync(int wait_for_me_tid){
     Mask m{}; // masking object
-    if (tid < 0 || tid > MAX_THREAD_NUM || Status::TERMINATED == thread_list[tid].GetStatus()){
-        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
+    if (wait_for_me_tid < 0 || wait_for_me_tid > MAX_THREAD_NUM || Status::TERMINATED == thread_list[wait_for_me_tid].GetStatus()){
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << wait_for_me_tid << std::endl;
         return RET_ERR;
     }
 
-    int callee_id = uthread_get_tid();
+    UThreadID i_wait_tid = (UThreadID)uthread_get_tid();
 
-    if (ErrorCode::SUCCESS != thread_list[callee_id].SetBlocked(BlockReason::SYNC)){
+    if (ErrorCode::SUCCESS != thread_list[i_wait_tid].SetBlocked(BlockReason::WAITING)){
         return RET_ERR;
     }
 
-    if (ErrorCode::SUCCESS != thread_list[tid].PushSynced((UThreadID)callee_id)){
+    if (ErrorCode::SUCCESS != thread_list[wait_for_me_tid].PushWaitingForMe((UThreadID) i_wait_tid)){
         return RET_ERR;
     }
 
-    if (ErrorCode::SUCCESS != thread_list[callee_id].AddMySync((UThreadID)tid)){
+    if (ErrorCode::SUCCESS != thread_list[i_wait_tid].AddIWaitFor((UThreadID) wait_for_me_tid)){
         return RET_ERR;
     }
 
-    //todo: make scheduling decision.
+    switch_threads(true);
 
     return RET_SUCCESS;
 }
