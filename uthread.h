@@ -6,6 +6,7 @@
 #include "err_codes.h"
 #include <queue>
 #include <array>
+#include <set>
 #include <csignal>
 #include <setjmp.h>
 
@@ -64,13 +65,19 @@ public:
     ErrorCode SetState(State state);
     ErrorCode SetBlocked(BlockReason reason);
     ErrorCode PushSynced(UThreadID utid_synced_with_me);
+    ErrorCode AddMySync(UThreadID utid_im_synced_with);
+    ErrorCode RemoveMySync(UThreadID utid_im_synced_with);
+    ErrorCode FreeFromSyncWith(UThreadID tid);
     ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
-    ErrorCode InitEnv(void (*func)(void));
+    ErrorCode InitThread(void (*func)(void));
     ErrorCode FreeStack();
+    ErrorCode IncQuantum();
+
 
     Status GetStatus() const;
     State GetState() const;
+    int GetQuantumCounter() const;
     UThreadID FrontSynced() const;
     bool IsSyncedEmpty() const;
     const std::array <bool, NUM_OF_REASONS> GetBlockedReasons() const;
@@ -88,9 +95,11 @@ private:
     address_t sp_;
     address_t pc_;
 
+    int quantum_counter;                             // The number of quantumii per thread
+
     std::array <bool, NUM_OF_REASONS> blocked_reasons;  // Blocked because waiting for synced thread
     std::queue <UThreadID> synced_with_me_;             // All the threads that called "sync" for this thread.
-    //std::queue <UThreadID> im_synced_with_;           // All the threads that called "sync" for this thread.
+    std::set <UThreadID> im_synced_with_;           // All the threads that this thread called "sync" for. All are unique
     // TODO: allocate memory in CTOR for this queue
     // TODO: free queue's memory in DTOR
 
