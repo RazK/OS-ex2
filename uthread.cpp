@@ -40,8 +40,12 @@ UThread::UThread() {
     this->stack = nullptr;
     this->sp_ = (address_t)NULL;
     this->pc_ = (address_t)NULL;
-    state_ = State::READY;
-    status_ = Status::TERMINATED;
+    this->state_ = State::READY;
+    this->status_ = Status::TERMINATED;
+    this->blocked_reasons = {false, false};
+    this->im_synced_with_ = std::set<UThreadID>{};
+    this->synced_with_me_ = std::queue<UThreadID>{};
+    this->quantum_counter = 0;
 }
 
 UThread::~UThread() {
@@ -198,6 +202,9 @@ ErrorCode UThread::FreeFromSyncWith(UThreadID tid){
 ErrorCode UThread::FreeStack(){
     if (this->stack != nullptr){
         free(this->stack);
+        this->stack = nullptr;
+        this->sp_ = NULL;
+        this->pc_ = NULL;
         return ErrorCode::SUCCESS;
     }
     return ErrorCode::FAILED;

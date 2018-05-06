@@ -138,9 +138,9 @@ int uthread_init(int quantum_usecs){
     ASSERT_SUCCESS(setitimer (ITIMER_VIRTUAL, &timer, nullptr), "setitimer error.", ERR_SYS);
 
     // Construct all user threads (terminated)
-    for (auto &thread_id : thread_list) {
-        thread_id = UThread{};
-    }
+//    for (int thread_id = 0; thread_id < MAX_THREAD_NUM; thread_id++) {
+//        thread_list[thread_id] = UThread{};
+//    }
 
     // Spawn thread 0 to take control from now on
     thread_list[0].InitThreadZero();
@@ -176,22 +176,22 @@ int uthread_init(int quantum_usecs){
 
 int uthread_spawn(void (*f)()){
     Mask m{}; // masking object
-    int id;
+    int tid;
 
     // Find the minimal ID not yet taken.
-    for (id = 0; id < MAX_THREAD_NUM; id++){
-        if (thread_list[id].GetStatus() == Status::TERMINATED){ // Can be shortened to if(..status)
+    for (tid = 0; tid < MAX_THREAD_NUM; tid++){
+        if (thread_list[tid].GetStatus() == Status::TERMINATED){ // Can be shortened to if(..status)
             break;
         }
     }
 
-    if (id == MAX_THREAD_NUM){
+    if (tid == MAX_THREAD_NUM){
         return RET_ERR; // No more room for threads
     }
 
-    thread_list[id].InitThread(f);
-    ready_queue.push((UThreadID)id); // cast for type protection
-    return id;
+    thread_list[tid].InitThread(f);
+    ready_queue.push((UThreadID)tid); // cast for type protection
+    return tid;
 }
 
 
