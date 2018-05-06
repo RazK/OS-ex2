@@ -78,6 +78,21 @@ ErrorCode UThread::PushSynced(UThreadID utid_synced_with_me){
     return SUCCESS;
 }
 
+ErrorCode UThread::AddMySync(UThreadID utid_im_synced_with){
+    this->im_synced_with_.emplace(utid_im_synced_with);
+    // TODO: always just set and return?
+    return SUCCESS;
+}
+
+ErrorCode UThread::RemoveMySync(UThreadID utid_im_synced_with){
+    auto it = this->im_synced_with_.find(utid_im_synced_with);
+    auto res = this->im_synced_with_.erase(it);
+
+    // TODO: always just set and return?
+    return SUCCESS;
+}
+
+
 ErrorCode UThread::PopSynced(){
     this->synced_with_me_.pop();
     // TODO: always just set and return?
@@ -112,7 +127,17 @@ ErrorCode UThread::UnBlock(BlockReason reason){
 
 }; // Set the given block reason to false, if both are now false - Ready
 
-ErrorCode UThread::InitEnv(void (*func)(void)){
+ErrorCode UThread::InitThread(void (*func)(void)){
+    // Set thread's state and status and refresh dependancies as defined by initial state.
+    // Note, this may be a multiple live cylcle of thread.
+    this->state_ = State::READY;
+    this->status_ = ALIVE;
+    this->im_synced_with_ = {};
+//    this->im_synced_with_.clear();
+    this->synced_with_me_ = std::queue<UThreadID> {};
+    this->quantum_counter = 0;
+
+    // init env
     this->stack = (char*) malloc(STACK_SIZE);
     if (stack == nullptr){
         std::cerr << MSG_SYSTEM_ERR << "Could not allocate memory in environment init";
@@ -120,10 +145,25 @@ ErrorCode UThread::InitEnv(void (*func)(void)){
     }
     this->sp_ = (address_t)stack + STACK_SIZE - sizeof(address_t);
     this->pc_ = (address_t)func;
-//    sigsetjmp(this->env_, 1);
+    sigsetjmp(this->env_, 1);
     (this->env_->__jmpbuf)[JB_SP] = translate_address(this->sp_);
     (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
     return ErrorCode::SUCCESS;
+}
+
+ErrorCode UThread::FreeFromSyncWith(UThreadID tid){
+    auto it = this->im_synced_with_.find(tid);
+    auto res = this->im_synced_with_.erase(it);
+    // Check blocking logic and restore state to ready if all reasons are void
+    if (this->im_synced_with_.empty()){ // no longer synced
+        this->blocked_reasons[BlockReason::SYNC] = false;
+        if (!blocked_reasons[BlockReason::REQUEST]){ // check if still have blocked request
+            this->state_ = READY;
+        }
+    }
+
+    // TODO: always just set and return?
+    return SUCCESS;
 }
 
 ErrorCode UThread::FreeStack(){
@@ -158,3 +198,12 @@ bool UThread::IsSyncedEmpty() const{
 const std::array <bool, NUM_OF_REASONS> UThread::GetBlockedReasons() const{
     return this->blocked_reasons;
 };
+
+ErrorCode UThread::IncQuantum(){
+    quantum_counter += 1;
+    return ErrorCode::SUCCESS;
+}
+
+int UThread::GetQuantumCounter() const{
+    return this->quantum_counter;
+}

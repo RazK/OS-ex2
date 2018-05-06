@@ -92,6 +92,8 @@ void switch_threads(void ){
 //std::list <std::queue>
 void sig_alarm_handler(void){
     Mask m{};
+//    gotit = 1;
+    printf("Timer expired\n");
     int cur_tid = uthread_get_tid();
     // Add this thread to the end of the line.
     ready_queue.push((UThreadID) cur_tid);
@@ -128,12 +130,33 @@ int uthread_init(int quantum_usecs){
 //    (env[0]->__jmpbuf)[JB_SP] = translate_address(sp);
 //    (env[0]->__jmpbuf)[JB_PC] = translate_address(pc);
 //    sigemptyset(&env[0]->__saved_mask);
+    struct sigaction sa;
+    struct itimerval timer;
+
+    // Install timer_handler as the signal handler for SIGVTALRM.
+    sa.sa_handler = &sig_alarm_handler;
+    if (sigaction(SIGVTALRM, &sa,NULL) < 0) {
+        printf("sigaction error.");
+    }
+
+    // Configure the timer to expire after 1 sec... */
+    timer.it_value.tv_sec = 1;		// first time interval, seconds part
+    timer.it_value.tv_usec = 0;		// first time interval, microseconds part
+
+    // configure the timer to expire every 3 sec after that.
+    timer.it_interval.tv_sec = 3;	// following time intervals, seconds part
+    timer.it_interval.tv_usec = 0;	// following time intervals, microseconds part
+
+    // Start a virtual timer. It counts down whenever this process is executing.
+    if (setitimer (ITIMER_VIRTUAL, &timer, NULL)) {
+        printf("setitimer error.");
+    }
  
     // Init user threads
     for (int thread_id = ID_FIRST_USER_THREAD; thread_id < MAX_THREAD_NUM; thread_id++){
         thread_list[thread_id] = UThread{};
     }
-    thread_list[0].InitEnv(&f1);
+    thread_list[0].InitThread(&f1);
 
 
     return RET_SUCCESS;
@@ -146,7 +169,6 @@ int uthread_spawn(void (*f)()){
     // Find the minimal ID not yet taken.
     for (id = 1; id < MAX_THREAD_NUM; id++){
         if (thread_list[id].GetStatus() == Status::TERMINATED){ // Can be shortened to if(..status)
-
             break;
         }
     }
@@ -154,20 +176,20 @@ int uthread_spawn(void (*f)()){
     if (id == MAX_THREAD_NUM){
         return RET_ERR; // No more room for threads
     }
+    // responsibilities moved to init thread function. Raz. if your seeing this, please erase.
+//    // Set thread as alive for use
+//    if (ErrorCode::SUCCESS != thread_list[id].SetStatus(Status::ALIVE)) {
+//        return RET_ERR;
+//    }
 
-    // Set thread as alive for use
-    if (ErrorCode::SUCCESS != thread_list[id].SetStatus(Status::ALIVE)) {
-        return RET_ERR;
-    }
+//    // Set thread as ready for use
+//    if (ErrorCode::SUCCESS != thread_list[id].SetState(State::READY)){
+//        return RET_ERR;
+//    }
 
-    // Set thread as ready for use
-    if (ErrorCode::SUCCESS != thread_list[id].SetState(State::READY)){
-        return RET_ERR;
-    }
 
+    thread_list[id].InitThread(f);
     ready_queue.push((UThreadID)id); // cast for type protection
-
-    thread_list[id].InitEnv(f);
     return id;
 }
 
@@ -204,15 +226,25 @@ int uthread_terminate(int tid){
     // Not removing from ready queue. Rather, this is responsibility of scheduler to assert threads
     // are alive
 
-    // Iterate the queue of synced threads to allow them to run
+    // Iterate the queue of synced threads to allow them to run. Multiple checks need to take place.
     while (!thread_list[tid].IsSyncedEmpty()){
         UThreadID synced_thread = thread_list[tid].FrontSynced();
-        // TODO: RazK: (below) What if this thread was blocking? why did we decide it's READY?
-        if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
+        // Check if this thread is still waiting for the dying thread:
+
+        if (ErrorCode::SUCCESS != thread_list[synced_thread].FreeFromSyncWith(tid)){
             return RET_ERR;
         }
-        ready_queue.push(synced_thread);
-        // No need to check if synced thread is alive. This is responsibility of scheduler.
+
+        // No need to check if synced thread is alive. This is responsibility of scheduler. We do make sure that this
+        // thread needs to be added to the end of the ready queue to avoid working twice.
+        if (State::READY == thread_list[synced_thread].GetState()){
+            ready_queue.push(synced_thread);
+        }
+//        if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
+//            return RET_ERR;
+//        }
+
+        // Whatever the results were of the last steps, we now pop the last dependant thread and press on.
         if (ErrorCode::SUCCESS != thread_list[tid].PopSynced()){
             return RET_ERR;
         }
@@ -256,6 +288,7 @@ int uthread_resume(int tid){
     }
 
     if (Status::TERMINATED == thread_list[tid].GetStatus()){ // no such thread exists
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block missing thread with id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
@@ -288,6 +321,10 @@ int uthread_sync(int tid){
         return RET_ERR;
     }
 
+    if (ErrorCode::SUCCESS != thread_list[callee_id].AddMySync((UThreadID)tid)){
+        return RET_ERR;
+    }
+
     //todo: make scheduling decision.
 
     return RET_SUCCESS;
@@ -305,6 +342,10 @@ int uthread_get_total_quantums(){
 
 // TODO: Implement
 int uthread_get_quantums(int tid){
-    printf("pass\r\n");
-    return RET_SUCCESS;
+    Mask m{}; // masking object
+    if (tid < 0 || tid > MAX_THREAD_NUM || Status::TERMINATED == thread_list[tid].GetStatus()){
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
+        return RET_ERR;
+    }
+    return thread_list[tid].GetQuantumCounter();
 }
