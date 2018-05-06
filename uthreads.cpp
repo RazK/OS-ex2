@@ -15,6 +15,7 @@
 #include <exception>
 #include <iostream>
 #include <zconf.h>
+#include <sys/time.h>
 
 const int ID_SCHEDUELER = 0;
 const int ID_FIRST_USER_THREAD = 1;
@@ -90,15 +91,14 @@ void switch_threads(void ){
 }
 
 //std::list <std::queue>
-void sig_alarm_handler(void){
+void sig_alarm_handler(int sig){
     Mask m{};
 //    gotit = 1;
-    printf("Timer expired\n");
+    printf("In timer handler\n");
     int cur_tid = uthread_get_tid();
-    // Add this thread to the end of the line.
+    // Add this thread to the end of the line and increment quantum
     ready_queue.push((UThreadID) cur_tid);
-//    thread_list[cur_tid].SetEnv();
-//    int ret_val = sigsetjmp(thread_list[cur_tid].SetEnv,1);
+    thread_list[cur_tid].IncQuantum();
 
     if (ready_queue.empty()) {
         std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
