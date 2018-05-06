@@ -71,6 +71,7 @@ public:
     ErrorCode PopSynced();
     ErrorCode UnBlock(BlockReason reason); // Set the given block reason to false, if both are now false - Ready
     ErrorCode InitThread(void (*func)(void));
+    ErrorCode InitThreadZero();
     ErrorCode FreeStack();
     ErrorCode IncQuantum();
 

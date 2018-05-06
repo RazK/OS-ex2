@@ -146,8 +146,37 @@ ErrorCode UThread::InitThread(void (*func)(void)){
     this->sp_ = (address_t)stack + STACK_SIZE - sizeof(address_t);
     this->pc_ = (address_t)func;
     sigsetjmp(this->env_, 1);
+
     (this->env_->__jmpbuf)[JB_SP] = translate_address(this->sp_);
     (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
+    ASSERT_SUCCESS_RET(sigemptyset(&env_->__saved_mask), "sigemptyset failed", ERR_SYS, ErrorCode::FAILED);
+
+    return ErrorCode::SUCCESS;
+}
+
+ErrorCode UThread::InitThreadZero(){
+    // Set thread's state and status and refresh dependancies as defined by initial state.
+    // Note, this may be a multiple live cylcle of thread.
+    this->state_ = State::RUNNING;
+    this->status_ = ALIVE;
+    this->im_synced_with_ = {};
+    this->synced_with_me_ = std::queue<UThreadID> {};
+    this->quantum_counter = 0;
+
+    // init env
+    this->stack = (char*) malloc(STACK_SIZE);
+    if (stack == nullptr){
+        std::cerr << MSG_SYSTEM_ERR << "Could not allocate memory in environment init";
+        exit(1);
+    }
+//    this->sp_ = (address_t)stack + STACK_SIZE - sizeof(address_t);
+//    this->pc_ = (address_t)func;
+    sigsetjmp(this->env_, 1);
+
+//    (this->env_->__jmpbuf)[JB_SP] = translate_address(this->sp_);
+//    (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
+    ASSERT_SUCCESS_RET(sigemptyset(&env_->__saved_mask), "sigemptyset failed", ERR_SYS, ErrorCode::FAILED);
+
     return ErrorCode::SUCCESS;
 }
 

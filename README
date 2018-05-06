@@ -21,3 +21,11 @@ Q2:
 Here are answers to theoreical questions
 if there were such questions in the exercise.
 © 2018 GitHub, Inc.
+
+
+############################################
+# POINTS TO THINK ABOUT (BUGS MIGHT OCCUR) #
+############################################
+
+* Do we need to init the main thread? What's up with its stack?
+* Quantum counter - when is it incremented? Starts at 0 or 1?

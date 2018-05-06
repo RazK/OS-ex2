@@ -17,26 +17,25 @@
 #include <zconf.h>
 #include <sys/time.h>
 
+
 const int ID_SCHEDUELER = 0;
-const int ID_FIRST_USER_THREAD = 1;
+const int ID_FIRST_USER_THREAD = 0;
 const int SIG_RET_FROM_JUMP = 1;
+const int MIC_SEC_IN_SEC = 1000000;
 
-static UThreadID running_thread;
+UThreadID running_thread;
+struct sigaction sa;
+struct itimerval timer;
+int quantum;
 
-
-/* Scheduler thread stack */
-char stack_scheduler[STACK_SIZE];
 std::queue <UThreadID> ready_queue;
 
 /* Global counter for all quantums. */
-static int total_quantums;
+int total_quantums;
 
 /* Threads descriptor lookup table. */
 UThread thread_list[MAX_THREAD_NUM]; // #todo Should I send MAX_THREAD_NUM-1 (for main thread?)
-//sigjmp_buf env_list[MAX_THREAD_NUM];
-//sigjmp_buf env[MAX_THREAD_NUM];
 
-#define SECOND  10000000
 void f1 (void)
 {
     int i = 0;
@@ -47,7 +46,7 @@ void f1 (void)
             printf("f: switching\n");
             switch_threads();
         }
-        usleep(0.2*SECOND);
+        usleep(0.2*MIC_SEC_IN_SEC);
     }
 }
 
@@ -74,7 +73,6 @@ void switch_threads(void ){
     if (State::READY != thread_list[nextUTID].GetState()) {
         std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur." << std::endl;
         return;
-
     }
 
     // Save env for current thread and then jump to next one
@@ -93,7 +91,7 @@ void switch_threads(void ){
 //std::list <std::queue>
 void sig_alarm_handler(int sig){
     Mask m{};
-//    gotit = 1;
+
     printf("In timer handler\n");
     int cur_tid = uthread_get_tid();
     // Add this thread to the end of the line and increment quantum
@@ -104,8 +102,10 @@ void sig_alarm_handler(int sig){
         std::cerr << MSG_LIBRARY_ERR << "The queue of ready threads was found empty. Assumed not to occur.";
 //        return RET_ERR;
     }
+
     UThreadID currentThread = ready_queue.front();
     ready_queue.pop();
+//    switch_threads();
 
 //    siglongjmp(thread_list[currentThread].GetEnv());
 
@@ -114,11 +114,48 @@ void sig_alarm_handler(int sig){
 
 int uthread_init(int quantum_usecs){
     Mask m{}; // masking object
-    if (quantum_usecs < 0){
-        return RET_ERR;
+
+    // Validate params
+    ASSERT(quantum_usecs <= 0, "Non-positive number of quantums given", ERR_LIB);
+
+    // Init timer
+    ASSERT_SUCCESS(sigemptyset(&sa.sa_mask), "sigemptyset failed in init.", ERR_SYS);
+
+    // Install timer_handler as the signal handler for SIGVTALRM.
+    sa.sa_handler = &sig_alarm_handler;
+    if (sigaction(SIGVTALRM, &sa, nullptr) < 0) {
+        printf("sigaction error.");
     }
+
+    // Configure the timer to expire after quantum_usecs */
+    timer.it_value.tv_sec = quantum_usecs / MIC_SEC_IN_SEC ;		// first time interval, seconds part
+    timer.it_value.tv_usec = quantum_usecs % MIC_SEC_IN_SEC;		// first time interval, microseconds part
+
+    timer.it_interval.tv_sec = quantum_usecs / MIC_SEC_IN_SEC ;	    // following time intervals, seconds part
+    timer.it_interval.tv_usec = quantum_usecs % MIC_SEC_IN_SEC ;	// following time intervals, microseconds part
+
+    // Start a virtual timer. It counts down whenever this process is executing.
+    ASSERT_SUCCESS(setitimer (ITIMER_VIRTUAL, &timer, nullptr), "setitimer error.", ERR_SYS);
+
+    // Construct all user threads (terminated)
+    for (auto &thread_id : thread_list) {
+        thread_id = UThread{};
+    }
+
+    // Spawn thread 0 to take control from now on
+    thread_list[0].InitThreadZero();
+    //uthread_spawn(nullptr); // TODO: whatsup with our nullptr? do we ever jump there? segfault!
+    // Manually set thread 0 to running
+    //thread_list[0].SetState(State::RUNNING);
+
+
+    // Set global variables
     total_quantums = 1;
     running_thread = 0;
+
+//    quantum = quantum_usecs;
+
+
 
 
 
@@ -130,33 +167,8 @@ int uthread_init(int quantum_usecs){
 //    (env[0]->__jmpbuf)[JB_SP] = translate_address(sp);
 //    (env[0]->__jmpbuf)[JB_PC] = translate_address(pc);
 //    sigemptyset(&env[0]->__saved_mask);
-    struct sigaction sa;
-    struct itimerval timer;
 
-    // Install timer_handler as the signal handler for SIGVTALRM.
-    sa.sa_handler = &sig_alarm_handler;
-    if (sigaction(SIGVTALRM, &sa,NULL) < 0) {
-        printf("sigaction error.");
-    }
 
-    // Configure the timer to expire after 1 sec... */
-    timer.it_value.tv_sec = 1;		// first time interval, seconds part
-    timer.it_value.tv_usec = 0;		// first time interval, microseconds part
-
-    // configure the timer to expire every 3 sec after that.
-    timer.it_interval.tv_sec = 3;	// following time intervals, seconds part
-    timer.it_interval.tv_usec = 0;	// following time intervals, microseconds part
-
-    // Start a virtual timer. It counts down whenever this process is executing.
-    if (setitimer (ITIMER_VIRTUAL, &timer, NULL)) {
-        printf("setitimer error.");
-    }
- 
-    // Init user threads
-    for (int thread_id = ID_FIRST_USER_THREAD; thread_id < MAX_THREAD_NUM; thread_id++){
-        thread_list[thread_id] = UThread{};
-    }
-    thread_list[0].InitThread(&f1);
 
 
     return RET_SUCCESS;
@@ -167,7 +179,7 @@ int uthread_spawn(void (*f)()){
     int id;
 
     // Find the minimal ID not yet taken.
-    for (id = 1; id < MAX_THREAD_NUM; id++){
+    for (id = 0; id < MAX_THREAD_NUM; id++){
         if (thread_list[id].GetStatus() == Status::TERMINATED){ // Can be shortened to if(..status)
             break;
         }
@@ -176,17 +188,6 @@ int uthread_spawn(void (*f)()){
     if (id == MAX_THREAD_NUM){
         return RET_ERR; // No more room for threads
     }
-    // responsibilities moved to init thread function. Raz. if your seeing this, please erase.
-//    // Set thread as alive for use
-//    if (ErrorCode::SUCCESS != thread_list[id].SetStatus(Status::ALIVE)) {
-//        return RET_ERR;
-//    }
-
-//    // Set thread as ready for use
-//    if (ErrorCode::SUCCESS != thread_list[id].SetState(State::READY)){
-//        return RET_ERR;
-//    }
-
 
     thread_list[id].InitThread(f);
     ready_queue.push((UThreadID)id); // cast for type protection
