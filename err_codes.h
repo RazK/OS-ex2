@@ -45,7 +45,7 @@ do {                                                            \
 
 #define ASSERT(cond, msg, is_system)                            \
 do {                                                            \
-    if (RET_SUCCESS != (cond)) {                                \
+    if (cond) {                                                 \
         if ((is_system)) {                                      \
             std::cerr << MSG_SYSTEM_ERR << (msg) << std::endl;  \
             exit(1);                                            \

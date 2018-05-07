@@ -158,6 +158,12 @@ ErrorCode UThread::InitThread(void (*func)(void)){
     return ErrorCode::SUCCESS;
 }
 
+void empty(){
+    while(true){
+        std::cout << "in tid: 0 infitineloopfunc" << std::endl;
+    }
+}
+
 ErrorCode UThread::InitThreadZero(){
     // Set thread's state and status and refresh dependancies as defined by initial state.
     // Note, this may be a multiple live cylcle of thread.
@@ -173,12 +179,12 @@ ErrorCode UThread::InitThreadZero(){
         std::cerr << MSG_SYSTEM_ERR << "Could not allocate memory in environment init";
         exit(1);
     }
-//    this->sp_ = (address_t)stack + STACK_SIZE - sizeof(address_t);
-//    this->pc_ = (address_t)func;
-    sigsetjmp(this->env_, 1);
+    this->sp_ = (address_t)stack + STACK_SIZE - sizeof(address_t);
+    this->pc_ = (address_t)empty;
+//    sigsetjmp(this->env_, 1);
 
-//    (this->env_->__jmpbuf)[JB_SP] = translate_address(this->sp_);
-//    (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
+    (this->env_->__jmpbuf)[JB_SP] = translate_address(this->sp_);
+    (this->env_->__jmpbuf)[JB_PC] = translate_address(this->pc_);
     ASSERT_SUCCESS_RET(sigemptyset(&env_->__saved_mask), "sigemptyset failed", ERR_SYS, ErrorCode::FAILED);
 
     return ErrorCode::SUCCESS;
@@ -189,10 +195,11 @@ ErrorCode UThread::DismissUTIDIWaitFor(UThreadID tid){
     auto res = this->im_waiting_for_.erase(it);
     // Check blocking logic and restore state to ready if all reasons are void
     if (this->im_waiting_for_.empty()){ // no longer synced
-        this->blocked_reasons[BlockReason::WAITING] = false;
-        if (!blocked_reasons[BlockReason::REQUEST]){ // check if still have blocked request
-            this->state_ = READY;
-        }
+        ASSERT_SUCCESS_RET(this->UnBlock(BlockReason::WAITING), "Waiting thread was not blocked", ERR_LIB, ErrorCode::FAILED);
+//        this->blocked_reasons[BlockReason::WAITING] = false;
+//        if (!blocked_reasons[BlockReason::REQUEST]){ // check if still have blocked request
+//            this->state_ = READY;
+//        }
     }
 
     // TODO: always just set and return?

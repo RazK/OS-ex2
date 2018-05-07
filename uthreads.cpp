@@ -71,7 +71,9 @@ void switch_threads(bool isFromBlocked){
     }
 
     // Save env for current thread and then jump to next one
+    m.~Mask();
     int ret_val = sigsetjmp(thread_list[old_tid].env_, 1);
+    Mask m2{};
     if (ret_val == SIG_RET_FROM_JUMP){
         thread_list[old_tid].SetState(State::RUNNING);
         running_thread = old_tid;
@@ -84,8 +86,10 @@ void switch_threads(bool isFromBlocked){
 
 //std::list <std::queue>
 void sig_alarm_handler(int sig){
-    Mask m{};
-    printf("sigalarm_handler here!!\r\n");
+//    Mask m{};
+
+//    printf("sigalarm_handler here!!\r\n");
+    setitimer (ITIMER_VIRTUAL, &timer, nullptr);
     switch_threads(false);
 
 //    siglongjmp(thread_list[currentThread].GetEnv());
@@ -112,8 +116,11 @@ int uthread_init(int quantum_usecs){
     timer.it_value.tv_sec = quantum_usecs / MIC_SEC_IN_SEC ;		// first time interval, seconds part
     timer.it_value.tv_usec = quantum_usecs % MIC_SEC_IN_SEC;		// first time interval, microseconds part
 
-    timer.it_interval.tv_sec = quantum_usecs / MIC_SEC_IN_SEC ;	    // following time intervals, seconds part
-    timer.it_interval.tv_usec = quantum_usecs % MIC_SEC_IN_SEC ;	// following time intervals, microseconds part
+//    timer.it_interval.tv_sec = quantum_usecs / MIC_SEC_IN_SEC ;	    // following time intervals, seconds part
+//    timer.it_interval.tv_usec = quantum_usecs % MIC_SEC_IN_SEC ;	// following time intervals, microseconds part
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+
 
     // Start a virtual timer. It counts down whenever this process is executing.
     ASSERT_SUCCESS(setitimer (ITIMER_VIRTUAL, &timer, nullptr), "setitimer error.", ERR_SYS);
@@ -156,12 +163,9 @@ int uthread_terminate(int tid){
     }
 
     if (tid == 0){
-
-
         //Todo: Do i need to free aliicated memory for threads? REMEMBER: thier destructor is
         // implicitly called, which takes care of freeing memory if exists.
-
-//        delete (m);
+        // delete (m);
         exit(RET_SUCCESS);
     }
 
@@ -169,8 +173,6 @@ int uthread_terminate(int tid){
         std::cerr << MSG_LIBRARY_ERR << "Attempting to terminate a non-existent thread: ID " << tid << std::endl;
         return RET_ERR;
     }
-
-    //todo: check state_? what if it is running or blocked?
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetStatus(Status::TERMINATED)){
         return RET_ERR;
@@ -191,10 +193,11 @@ int uthread_terminate(int tid){
 
     // Iterate the queue of synced threads to allow them to run. Multiple checks need to take place.
     while (!thread_list[tid].IsWaitingForMeEmpty()){
+        // Retrieve one by one the threads waiting for this thread (tid) to die.
         UThreadID synced_thread = thread_list[tid].FrontWaitingForMe();
-        // Check if this thread is still waiting for the dying thread:
 
-        if (ErrorCode::SUCCESS != thread_list[synced_thread].DismissUTIDIWaitFor(tid)){
+        // Check if this thread is still waiting for the dying thread:
+        if (ErrorCode::SUCCESS != thread_list[synced_thread].DismissUTIDIWaitFor((UThreadID)tid)){
             return RET_ERR;
         }
 
@@ -203,9 +206,6 @@ int uthread_terminate(int tid){
         if (State::READY == thread_list[synced_thread].GetState()){
             ready_queue.push(synced_thread);
         }
-//        if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
-//            return RET_ERR;
-//        }
 
         // Whatever the results were of the last steps, we now pop the last dependant thread and press on.
         if (ErrorCode::SUCCESS != thread_list[tid].PopWaitingForMe()){
@@ -246,12 +246,12 @@ int uthread_block(int tid){
 int uthread_resume(int tid){
     Mask m{}; // masking object
     if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to resume main thread or boundary error
-        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << tid << std::endl;
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to resume illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
     if (Status::TERMINATED == thread_list[tid].GetStatus()){ // no such thread exists
-        std::cerr << MSG_LIBRARY_ERR << "Attempting to block missing thread with id: ID " << tid << std::endl;
+        std::cerr << MSG_LIBRARY_ERR << "Attempting to resi,e missing thread with id: ID " << tid << std::endl;
         return RET_ERR;
     }
 
@@ -269,12 +269,14 @@ int uthread_resume(int tid){
 
 int uthread_sync(int wait_for_me_tid){
     Mask m{}; // masking object
-    if (wait_for_me_tid < 0 || wait_for_me_tid > MAX_THREAD_NUM || Status::TERMINATED == thread_list[wait_for_me_tid].GetStatus()){
-        std::cerr << MSG_LIBRARY_ERR << "Attempting to block illegal thread id: ID " << wait_for_me_tid << std::endl;
+    if (wait_for_me_tid < 0 || wait_for_me_tid > MAX_THREAD_NUM      /* Striaght up illegal tid */
+        || wait_for_me_tid == uthread_get_tid()                     /* Thread is attemping to synce with itself */
+        || Status::TERMINATED == thread_list[wait_for_me_tid].GetStatus()){ /*Waiting for thread that doesnt exist*/
+        std::cerr << MSG_LIBRARY_ERR << "Illigal usage of sync: ID " << wait_for_me_tid << std::endl;
         return RET_ERR;
     }
 
-    UThreadID i_wait_tid = (UThreadID)uthread_get_tid();
+    auto i_wait_tid = (UThreadID)uthread_get_tid();
 
     if (ErrorCode::SUCCESS != thread_list[i_wait_tid].SetBlocked(BlockReason::WAITING)){
         return RET_ERR;

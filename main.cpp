@@ -21,8 +21,8 @@ void halt()
 {
     while (true)
     {
-        std::cout << count << "halting! (quantum should kill me any second now.. or not)?" << std::endl;
-        count += 1;
+//        std::cout << count << "halting! (quantum should kill me any second now.. or not)?" << std::endl;
+//        count += 1;
     }
 }
 
@@ -52,13 +52,14 @@ int main()
     printf(GRN "Test 2:    " RESET);
     fflush(stdout);
 
-    uthread_init(20);
+    uthread_init(40);
     uthread_spawn(thread1);
     uthread_spawn(thread2);
     thread2Spawned = true;
-    for(int i = 0; i < 100000000; i++){
-        printf("in loop of main\r\n");
+    for(int i = 0; i < 10000000; i++){
+//        printf("in loop of main\r\n");
     }
+    printf("now terminating 2\r\n");
     uthread_terminate(2);
     halt();
 }
