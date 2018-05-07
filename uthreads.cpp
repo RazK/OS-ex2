@@ -155,6 +155,16 @@ int uthread_terminate(int tid){
         return RET_ERR;
     }
 
+    if (tid == 0){
+
+
+        //Todo: Do i need to free aliicated memory for threads? REMEMBER: thier destructor is
+        // implicitly called, which takes care of freeing memory if exists.
+
+//        delete (m);
+        exit(RET_SUCCESS);
+    }
+
     if (Status::TERMINATED == thread_list[tid].GetStatus()){ // Already terminated or doesn't exist
         std::cerr << MSG_LIBRARY_ERR << "Attempting to terminate a non-existent thread: ID " << tid << std::endl;
         return RET_ERR;
@@ -165,7 +175,6 @@ int uthread_terminate(int tid){
     if (ErrorCode::SUCCESS != thread_list[tid].SetStatus(Status::TERMINATED)){
         return RET_ERR;
     }
-
 
     if (ErrorCode::SUCCESS != thread_list[tid].SetState(State::READY)){
         std::cerr << MSG_LIBRARY_ERR << "Could not set the state: ID " << tid << std::endl;
@@ -303,3 +312,4 @@ int uthread_get_quantums(int tid){
     }
     return thread_list[tid].GetQuantumCounter();
 }
+

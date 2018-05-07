@@ -45,6 +45,89 @@ int jmp_test(){
     f();
 }
 
+int test_bad_init(){
+    std:: cout << "testing bad init: "<< std::endl;
+    if ((-1) != uthread_init(-3)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    std:: cout << "PASSED "<< std::endl;
+    return ;
+
+}
+
+//int test_bad_terminate(){
+//    std:: cout << "testing bad terminate: terminating 0 (main thread) " << std::endl;
+//    if ((RET_SUCCESS) != uthread_init(30)){
+//        std:: cout << "FAILED!  "<< std::endl;
+//        return ;
+//    }
+//    if ((RET_SUCCESS) != uthread_spawn(f)){
+//        std:: cout << "FAILED!  "<< std::endl;
+//        return ;
+//    }
+//    if ((RET_SUCCESS) != uthread_spawn(f)){
+//        std:: cout << "FAILED!  "<< std::endl;
+//        return ;
+//    }
+//    if ((RET_ERR) != uthread_terminate(0)){
+//        std:: cout << "FAILED!  "<< std::endl;
+//        return ;
+//    }
+//
+//    std:: cout << "PASSED "<< std::endl;
+//    return ;
+//
+//}
+
+int test_bad_terminate2(){
+    std:: cout << "testing bad terminate: terminating non existent thread " << std::endl;
+    if ((RET_SUCCESS) != uthread_init(30)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    if ((RET_SUCCESS) != uthread_spawn(f)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    if ((RET_SUCCESS) != uthread_spawn(f)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    if ((RET_ERR) != uthread_terminate(5)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+
+    std:: cout << "PASSED "<< std::endl;
+    return ;
+
+}
+
+int test_bad_terminate2(){
+    std:: cout << "testing bad terminate: terminating negative thread id " << std::endl;
+    if ((RET_SUCCESS) != uthread_init(30)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    if ((RET_SUCCESS) != uthread_spawn(f)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    if ((RET_SUCCESS) != uthread_spawn(f)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+    if ((RET_ERR) != uthread_terminate(5)){
+        std:: cout << "FAILED!  "<< std::endl;
+        return ;
+    }
+
+    std:: cout << "PASSED "<< std::endl;
+    return ;
+
+}
+
 int main(){
 
     int return_val;
