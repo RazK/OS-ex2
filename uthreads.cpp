@@ -217,7 +217,10 @@ int uthread_terminate(int tid){
             return RET_ERR;
         }
     }
-
+    //TODO: If a thread terminates itself or the main thread is terminated, the function does not return.
+    if (tid == uthread_get_tid()){
+        switch_threads(true);
+    }
     return RET_SUCCESS;
 
 }
@@ -250,7 +253,7 @@ int uthread_block(int tid){
 
 int uthread_resume(int tid){
     Mask m{}; // masking object
-    if (tid <= 0 || tid > MAX_THREAD_NUM){ // trying to resume main thread or boundary error
+    if (tid < 0 || tid > MAX_THREAD_NUM){ // trying to resume main thread or boundary error
         std::cerr << MSG_LIBRARY_ERR << "Attempting to resume illegal thread id: ID " << tid << std::endl;
         return RET_ERR;
     }
@@ -260,13 +263,18 @@ int uthread_resume(int tid){
         return RET_ERR;
     }
 
-    if (ErrorCode::SUCCESS != thread_list[tid].UnBlock(BlockReason::REQUEST)){
-        return RET_ERR;
+    if (State::BLOCKED == thread_list[tid].GetState()){
+
+        if (ErrorCode::SUCCESS != thread_list[tid].UnBlock(BlockReason::REQUEST)){
+            return RET_ERR;
+        }
+
+        if (State::READY == thread_list[tid].GetState()){
+            ready_queue.push((UThreadID) tid);
+        }
     }
 
-    if (State::READY == thread_list[tid].GetState()){
-        ready_queue.push((UThreadID) tid);
-    }
+
 
     return RET_SUCCESS;
 }
