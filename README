@@ -5,27 +5,82 @@ EX: 2
 FILES:
 README       -- this file
 uthreads.cpp -- implementation of uthreads.h
+uthread.h    -- header for our uthread class
+uthread.cpp  -- implementation of our uthread class
+error_codes.h-- error codes and related constants
+mask.h       -- header for our mask class
+mask.cpp     -- implementation of our mask class
 
 REMARKS:
 These are some remarks that
 I want the graders to know
 about this submission.
 
-ANSWERS:
+===========
+= ANSWERS =
+===========
 
-Q1:
-Here are answers to theoreical questions
-if there were such questions in the exercise.
+------
+- Q1 -
+------
+User levels threads are useful in a scenario where we want to simulate simultaneous behaviour.
+For example, a programmer is writing a game a multiplayer game such as tron, and would like to
+achieve near simultaneous responses for the gamer’s benefit. That is, in the framework of a game,
+many tasks need to be performed to update the screen, stats, whilst receiving input from the game’s
+users, ect.
+If the game has intensive computing demands, it can develop a delay or seem to lag in it’s response
+time to inputs. One player might perform a complicated action which will then result in
+interrupting other players and blocking them by taking unfair amount of cpu time.
+To solve this problem, the programmer can divide these tasks between multiple user level threads,
+which he alone is responsible for coordinating and choosing their time-sharing intervals
+(quantums).
+This way, the programmer can minimise overhead of high frequency context switches,
+while maintaining fast responses to the gamer’s inputs.
 
-Q2:
-Here are answers to theoreical questions
-if there were such questions in the exercise.
-© 2018 GitHub, Inc.
+------
+- Q2 -
+------
+When new processes are created, none of them have shared memory. This is an essential safety
+measure, and Chrome abides by these standards.
+What could happen should Chrome implement tabs using Kernel level threads is that web pages could
+access each other’s memories while running simultaneously. This would open a door for malicious
+webpages to access your sensitive data through this breach. Consider two open tabs, one to a
+sketchy game of space invaders and the other to Bank Hapoalim. A simple buffer overflow weakness
+can be exploited by the sketchy game to access the password string buffer which was just filled by
+the bank tab, and our sensitive data is leaked.
 
 
-############################################
-# POINTS TO THINK ABOUT (BUGS MIGHT OCCUR) #
-############################################
+------
+- Q3 -
+------
+Let’s assume the following processing are running:
+Shotwell
+Shell
 
-* Do we need to init the main thread? What's up with its stack?
-* Quantum counter - when is it incremented? Starts at 0 or 1?
+When I type on the keyboard, I am causing Keyboard interrupts that are displaying my keystrokes in
+the shell processes display. These interrupts are being handled by the Shell program itself?
+
+Once I’ve typed “kill (pid of Shotwell)” and “enter” on the keyboard, I’ve instructed process
+“Shell” to send a signal to process “Shotwell”. This signal, by default,  was a terminate  signal
+(TERM). Other signals are available.  This caused the OS to invoke to handler for terminating a
+process, in this case, terminating shotwell. By the time the handler finished running, Shotwell’s
+process was no longer running, and the Shell process could display a summary: Terminated  shotwell.
+
+------
+- Q4 -
+------
+Virtual time: The running time of some specific process as perceived by that process.
+Real time: The time the passed on the system clock regardless of process context.
+
+Virtual time can be used to coordinate between two tasks, when we want to allocate equal resources
+to each. To measure that both are using the same running time, I can invoke a virtual
+timer for each to see how much time was allocated for each process / task.
+An example would be a chess game or a racing game where we want two threads representing two
+players to run for an equal amount of virtual time (time which was actually consumed by the
+players) regardless of traps and system call time which was not deliberately requested by the
+players.
+
+On the other hand, real time can be used to synchronize between two real world events. For
+example, if I want to simulate stereo sound using two speakers, I need to make sure the process
+that’s controlling them has fine tunes timing intervals that use real time to simulate effect the
+human ear perceives.

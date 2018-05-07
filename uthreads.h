@@ -116,7 +116,5 @@ int uthread_get_total_quantums();
 */
 int uthread_get_quantums(int tid);
 
-void switch_threads(void);
-
 #endif
 

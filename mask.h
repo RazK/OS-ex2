@@ -5,16 +5,9 @@
 #ifndef PROJECT_MASK_H
 #define PROJECT_MASK_H
 
-#include <signal.h>
+#include <csignal>
 #include "err_codes.h"
 #include <iostream>
-
-typedef enum _MaskingCode {
-    SCHEDULER,
-    BLOCKING,
-    NUMBER_OF_CODES
-
-} MaskingCode;
 
 // A masking object. This short lived object is intended to call the appropriate masking function
 // in any given scenario, and call the reciprocal unmask function when the scope is exited.

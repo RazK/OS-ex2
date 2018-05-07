@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
-#include <time.h>
 #include "uthreads.h"
+#include "time.h"
 
 #define GRN "\e[32m"
 #define RED "\x1B[31m"
@@ -46,20 +46,11 @@ int array[ARRAY_SIZE];
 int place_holder0[N], place_holder1[N / 2], place_holder2[N / 2];
 
 
-void printArray();
-
-
-int rand_tid()
-{
-    return rand() % NUM_THREADS;
-}
-
 void wait_next_quantum()
 {
     int quantum = uthread_get_quantums(uthread_get_tid());
     while (uthread_get_quantums(uthread_get_tid()) == quantum)
     {}
-    return;
 }
 
 // sort array[start..end-1]
