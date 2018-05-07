@@ -196,14 +196,8 @@ ErrorCode UThread::DismissUTIDIWaitFor(UThreadID tid){
     // Check blocking logic and restore state to ready if all reasons are void
     if (this->im_waiting_for_.empty()){ // no longer synced
         ASSERT_SUCCESS_RET(this->UnBlock(BlockReason::WAITING), "Waiting thread was not blocked", ERR_LIB, ErrorCode::FAILED);
-//        this->blocked_reasons[BlockReason::WAITING] = false;
-//        if (!blocked_reasons[BlockReason::REQUEST]){ // check if still have blocked request
-//            this->state_ = READY;
-//        }
     }
-
-    // TODO: always just set and return?
-    return SUCCESS;
+    return ErrorCode::SUCCESS;
 }
 
 ErrorCode UThread::FreeStack(){

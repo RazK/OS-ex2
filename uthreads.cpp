@@ -71,9 +71,8 @@ void switch_threads(bool isFromBlocked){
     }
 
     // Save env for current thread and then jump to next one
-    m.~Mask();
     int ret_val = sigsetjmp(thread_list[old_tid].env_, 1);
-    Mask m2{};
+
     if (ret_val == SIG_RET_FROM_JUMP){
         thread_list[old_tid].SetState(State::RUNNING);
         running_thread = old_tid;
@@ -81,6 +80,12 @@ void switch_threads(bool isFromBlocked){
     }
     thread_list[new_tid].SetState(State::RUNNING);
     running_thread = new_tid;
+
+    // Update quantums ,both global and thread specific
+    thread_list[running_thread].IncQuantum();
+    total_quantums += 1;
+
+    // and away we go!
     siglongjmp(thread_list[new_tid].env_, SIG_RET_FROM_JUMP); // TODO: Assert return value!!!
 }
 
